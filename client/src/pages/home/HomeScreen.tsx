@@ -102,6 +102,17 @@ const HomeScreen = () => {
         initialFilters={filters}
       />
       
+      {/* Create Listing Button - Accessible to all users (renters & landlords) */}
+      <div className="px-4 my-4 flex justify-center">
+        <Button 
+          onClick={() => navigate(ROUTES.CREATE_LISTING)}
+          className="bg-primary hover:bg-primary/90 w-full max-w-md shadow-md"
+        >
+          <i className="fas fa-plus-circle mr-2"></i>
+          List Your Property
+        </Button>
+      </div>
+      
       {/* Full Map View when toggled */}
       {showFullMap && (
         <div className="px-4 mb-6">

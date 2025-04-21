@@ -13,6 +13,7 @@ import Verification from "@/pages/auth/Verification";
 import HomeScreen from "@/pages/home/HomeScreen";
 import ChatList from "@/pages/chat/ChatList";
 import ListingDetail from "@/pages/listings/ListingDetail";
+import CreateListing from "@/pages/listings/CreateListing";
 import MoreScreen from "@/pages/more/MoreScreen";
 import NotFound from "@/pages/not-found";
 
@@ -87,7 +88,10 @@ function Router() {
         <ProtectedRoute component={ChatList} />
       </Route>
       <Route path={ROUTES.LISTING_DETAIL.replace(':id', ':id')}>
-        {(params) => <ProtectedRoute component={ListingDetail} id={params.id} />}
+        {(params: { id?: string }) => <ProtectedRoute component={ListingDetail} id={params.id} />}
+      </Route>
+      <Route path={ROUTES.CREATE_LISTING}>
+        <ProtectedRoute component={CreateListing} />
       </Route>
       <Route path={ROUTES.MORE}>
         <ProtectedRoute component={MoreScreen} />

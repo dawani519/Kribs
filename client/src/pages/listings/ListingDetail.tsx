@@ -112,13 +112,24 @@ const ListingDetail = ({ id }: ListingDetailProps) => {
     }
   };
   
-  // Start chat with property owner
+  // Start chat with property owner or user
   const startChat = async () => {
     if (!user || !listing) return;
     
     try {
-      // Create or get conversation
-      const conversation = await chatService.createConversation({
+      // Determine if the current user is the owner or a renter
+      const isOwner = user.id === listing.userId;
+      
+      if (isOwner) {
+        // If the user is the owner and someone has previously messaged them about this listing
+        // Show a list of conversations or navigate to chat list filtered by this listing
+        navigate(`/chat?listingId=${listing.id}`);
+        return;
+      }
+      
+      // For renters or other users viewing the listing
+      // Create or get conversation with the owner
+      const conversation = await chatService.startConversation({
         listingId: listing.id,
         ownerId: listing.userId
       });
@@ -359,7 +370,7 @@ const ListingDetail = ({ id }: ListingDetailProps) => {
                 </p>
               </div>
             </div>
-            {listing.verified && (
+            {listing.userId === user?.id && user?.isVerified && (
               <div>
                 <span className="flex items-center text-sm text-success">
                   <i className="fas fa-check-circle mr-1"></i> Verified
