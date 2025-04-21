@@ -1,0 +1,276 @@
+You are to build Kribs, a cross-platform housing and property listing app using React Native, Supabase, Paystack, Google Maps, Firebase (FCM), Mono or Smile Identity for verification, and Gifted Chat for messaging. This app is built for production use, so no mock data or placeholders — everything should be scalable, efficient, and optimized for real-world deployment.
+
+🧱 Stack & Requirements
+Frontend: React Native (Expo or Bare)
+
+Backend: Supabase (Auth, Realtime DB, Storage, RLS policies)
+
+Payments: Paystack
+
+Chat: Gifted Chat + Supabase Realtime
+
+Verification: Mono API or Smile Identity (NIN/BVN)
+
+Push Notifications: Firebase Cloud Messaging (FCM)
+
+Location/Maps: Google Maps API + IP Geo Tracking
+
+Monitoring: Sentry
+
+🏗 File Structure
+Build all files modular and reusable. Here’s the architecture:
+
+bash
+Copy
+Edit
+/src
+├─ App.tsx
+├─ index.js
+│
+├─ /config
+│   • supabaseClient.ts
+│   • paystack.ts
+│   • constants.ts
+│   • env.ts
+│
+├─ /navigation
+│   • AppNavigator.tsx
+│   • MainNavigator.tsx
+│   • AuthNavigator.tsx
+│   • AdminNavigator.tsx
+│
+├─ /redux
+│   • authSlice.ts
+│   • listingSlice.ts
+│   • paymentSlice.ts
+│   • verificationSlice.ts
+│   • chatSlice.ts
+│   • adminSlice.ts
+│
+├─ /hooks
+│   • useAuth.ts
+│   • useGeoLocation.ts
+│   • useVerification.ts
+│
+├─ /services
+│   • authService.ts
+│   • listingService.ts
+│   • paymentService.ts
+│   • chatService.ts
+│   • verificationService.ts
+│   • mapService.ts
+│   • adminService.ts
+│
+├─ /components
+│   • BottomTabBar.tsx
+│   • TopBar.tsx
+│   • ListingGrid.tsx
+│   • ListingCard.tsx
+│   • ListingForm.tsx
+│   • PhoneInput.tsx
+│   • VerificationForm.tsx
+│   • MapPicker.tsx
+│   • RenterRegForm.tsx
+│   • LandlordRegForm.tsx
+│   • MgmtRegForm.tsx
+│   • PaymentModal.tsx
+│   • ChatMessage.tsx
+│   • SearchFilterBar.tsx
+│   • Loading.tsx
+│
+├─ /screens
+│   /Auth
+│     • Login.tsx
+│     • RegisterRole.tsx
+│     • RenterRegister.tsx
+│     • LandlordRegister.tsx
+│     • MgmtRegister.tsx
+│     • Verification.tsx
+│
+│   /Home
+│     • HomeScreen.tsx
+│
+│   /Listings
+│     • ListingList.tsx
+│     • ListingDetail.tsx
+│     • CreateListing.tsx
+│     • MyListings.tsx
+│
+│   /Chat
+│     • ChatList.tsx
+│     • ChatScreen.tsx
+│
+│   /More
+│     • ProfileView.tsx
+│     • Payments.tsx
+│     • Support.tsx
+│     • Settings.tsx
+│
+│   /Admin
+│     • Dashboard.tsx
+│     • UserManagement.tsx
+│     • Approvals.tsx
+│     • Analytics.tsx
+│
+└─ /types
+    • index.d.ts
+💬 Roles & Access Logic
+Roles: Renter | Landlord | Real Estate Manager
+
+Registration flows for each role with custom fields
+
+Verification logic (NIN/BVN) using Mono or Smile Identity
+
+Access Logic:
+
+
+Verification	Listed	Contact Fee
+❌	❌	₦10,000
+✅	❌	₦5,000
+✅	✅	₦2,000
+Admin Panel can override access (free)
+
+📦 Listings
+All types: 1 room, 2 room, self-contain, flats (1–9 bed), duplexes, warehouse, shop, hall
+
+Listing fields:
+
+Title
+
+Type
+
+Category: Long-Term / Short-Term
+
+Description
+
+Address + Map
+
+Photos
+
+Availability Dates
+
+Min/Max Price
+
+Contact info (auto-censored)
+
+Listing Fee:
+
+₦2,000 (landlord)
+
+₦5,000 (renter)
+
+🛑 Anti-Cheat Features
+Regex to detect phone numbers in any format (e.g. 0803, 0 8 0 3, zero eight zero)
+
+Replace with asterisks or “••••” until paid
+
+Only show full info if user has paid
+
+🗺 Google Maps + Geo
+Google Maps API to place markers
+
+Show listings near current user (geofencing)
+
+Store lat/lng in listings
+
+Track user’s IP when initiating visit
+
+💬 Chat System
+Gifted Chat UI
+
+Store messages in Supabase messages table
+
+Admin can view all messages
+
+Chat lock until contact fee is paid
+
+Notifications for messages (FCM)
+
+🧾 Payment Logic
+Paystack integration (via Webview or SDK)
+
+Use paymentService to:
+
+Initiate listing payment
+
+Initiate contact payment
+
+Webhook to confirm and unlock access
+
+Admin dashboard to manage transactions
+
+🔧 Admin Features
+Admin users with dashboard access
+
+Can:
+
+View/verify users
+
+Approve listings
+
+Override contact access
+
+View chats
+
+Analytics dashboard (listings, revenue, usage)
+
+📱 UI/UX Design
+Primary Color: #3a9d23 (leaf green)
+
+Bottom Tab Navigation:
+
+Home (🏠)
+
+Chat (💬)
+
+More (⋯)
+
+Top Bar:
+
+Left: Avatar → Profile
+
+Right: 🔔 Notifications
+
+Home Page:
+
+Search bar
+
+Filter button (modal)
+
+Grid-style listings
+
+Infinite scroll
+
+More Screen:
+
+Profile
+
+Settings
+
+Support
+
+Payments
+
+Verification
+
+🛑 Conditions
+No mock data
+
+All backend logic functional and production-ready
+
+Must be scalable and modular
+
+Use real endpoints & services for:
+
+Auth
+
+Verification
+
+Payments
+
+Storage
+
+Messaging
+
+Notifications
+
