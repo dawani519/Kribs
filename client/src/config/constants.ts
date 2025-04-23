@@ -1,148 +1,176 @@
-// API endpoints
+import { GOOGLE_MAPS_API_KEY } from './env';
+
+// API Endpoints
 export const API_ENDPOINTS = {
+  // Auth
   LOGIN: '/api/auth/login',
   REGISTER: '/api/auth/register',
   LOGOUT: '/api/auth/logout',
-  SESSION: '/api/auth/session',
-  USERS: '/api/users',
-  CURRENT_USER: '/api/users/me',
-  PROFILE: '/api/users/me/profile',
-  CHECK_EMAIL: '/api/auth/check-email',
-  
-  LISTINGS: '/api/listings',
-  LISTING_DETAIL: '/api/listings/:id',
-  FEATURED_LISTINGS: '/api/listings/featured',
-  NEARBY_LISTINGS: '/api/listings/nearby',
-  RECENT_LISTINGS: '/api/listings/recent',
-  SEARCH_LISTINGS: '/api/listings/search',
-  USER_LISTINGS: '/api/users/me/listings',
-  
-  CONVERSATIONS: '/api/conversations',
-  CONVERSATION_DETAIL: '/api/conversations/:id',
-  MESSAGES: '/api/conversations/:id/messages',
-  
-  PAYMENTS: '/api/payments',
-  INITIATE_PAYMENT: '/api/payments/initiate',
-  VERIFY_PAYMENT: '/api/payments/verify',
-  CHECK_ACCESS: '/api/payments/check-access',
-  CONTACT_ACCESS: '/api/payments/contact-access',
-  
-  VERIFICATIONS: '/api/verifications',
-  VERIFICATION: '/api/verifications/status',
-  VERIFY_USER: '/api/verifications/:id/verify',
-  
-  NOTIFICATIONS: '/api/notifications',
-};
-
-// Frontend routes
-export const ROUTES = {
-  // Auth
-  LOGIN: '/login',
-  REGISTER_ROLE: '/register/role',
-  REGISTER: '/register',
-  FORGOT_PASSWORD: '/forgot-password',
-  RESET_PASSWORD: '/reset-password',
-  VERIFICATION: '/verification',
-  
-  // Main tabs
-  HOME: '/',
-  SEARCH: '/search',
-  CHAT: '/chat',
-  CHAT_DETAIL: '/chat/:id',
-  MORE: '/profile',
+  PROFILE: '/api/auth/profile',
+  VERIFY_EMAIL: '/api/auth/verify/email',
+  VERIFY_PHONE: '/api/auth/verify/phone',
+  VERIFY_ID: '/api/auth/verify/id',
   
   // Listings
-  LISTING_DETAIL: '/listings/:id',
-  CREATE_LISTING: '/create-listing',
-  EDIT_LISTING: '/edit-listing/:id',
-  MY_LISTINGS: '/my-listings',
+  LISTINGS: '/api/listings',
+  LISTING: (id: number) => `/api/listings/${id}`,
+  FEATURED_LISTINGS: '/api/listings/featured',
+  RECENT_LISTINGS: '/api/listings/recent',
+  MY_LISTINGS: '/api/listings/mine',
+  SAVED_LISTINGS: '/api/listings/saved',
+  NEARBY_LISTINGS: '/api/listings/nearby',
+  SAVE_LISTING: (id: number) => `/api/listings/${id}/save`,
+  UNSAVE_LISTING: (id: number) => `/api/listings/${id}/unsave`,
   
-  // More section
-  SAVED_LISTINGS: '/saved',
+  // Chat
+  CONVERSATIONS: '/api/conversations',
+  CONVERSATION: (id: number) => `/api/conversations/${id}`,
+  MESSAGES: (conversationId: number) => `/api/conversations/${conversationId}/messages`,
+  READ_MESSAGES: (conversationId: number) => `/api/conversations/${conversationId}/read`,
+  
+  // Payments
+  PAYMENTS: '/api/payments',
+  PAYMENT: (id: number) => `/api/payments/${id}`,
+  VERIFY_PAYMENT: (reference: string) => `/api/payments/verify/${reference}`,
+  
+  // Contact Access
+  CONTACT_ACCESS: (listingId: number) => `/api/listings/${listingId}/contact-access`,
+  
+  // Notifications
+  NOTIFICATIONS: '/api/notifications',
+  READ_NOTIFICATION: (id: number) => `/api/notifications/${id}/read`,
+  READ_ALL_NOTIFICATIONS: '/api/notifications/read-all',
+};
+
+// Route paths
+export const ROUTES = {
+  HOME: '/',
+  LOGIN: '/auth/login',
+  REGISTER: '/auth/register',
+  VERIFICATION: '/auth/verification',
+  PROFILE: '/profile',
+  EDIT_PROFILE: '/profile/edit',
+  LISTINGS: '/listings',
+  LISTING_DETAIL: (id: number | string) => `/listings/${id}`,
+  CREATE_LISTING: '/listings/create',
+  EDIT_LISTING: (id: number | string) => `/listings/${id}/edit`,
+  CHAT: '/chat',
+  CHAT_CONVERSATION: (id: number | string) => `/chat/${id}`,
+  SAVED: '/saved',
+  NOTIFICATIONS: '/notifications',
   PAYMENTS: '/payments',
-  SETTINGS: '/settings',
-  HELP: '/help',
-  
-  // Other
-  VERIFICATION_STATUS: '/verification-status',
+  ABOUT: '/about',
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
   NOT_FOUND: '/404',
 };
 
-// Property types and categories
+// Property types
 export const PROPERTY_TYPES = [
-  { value: 'rent', label: 'For Rent' },
-  { value: 'sale', label: 'For Sale' },
-  { value: 'short_stay', label: 'Short Stay' },
+  'Apartment',
+  'House',
+  'Land',
+  'Commercial',
+  'Shortlet',
 ];
 
+// Property categories
 export const PROPERTY_CATEGORIES = [
-  { value: 'apartment', label: 'Apartment' },
-  { value: 'house', label: 'House' },
-  { value: 'land', label: 'Land' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'shared', label: 'Shared' },
+  'For Rent',
+  'For Sale',
+  'For Lease',
+  'Short Stay',
+  'Joint Venture',
 ];
 
-// Common amenities
+// Amenities
 export const AMENITIES = [
   'Air Conditioning',
   'Balcony',
-  'Dishwasher',
-  'Elevator',
   'Furnished',
   'Garden',
   'Gym',
-  'Internet/WiFi',
+  'Internet',
   'Parking',
-  'Pet-Friendly',
   'Pool',
   'Security',
-  'TV',
+  'Water',
+  'Electricity',
+  'Generator',
+  'Borehole',
+  'En-suite Bathroom',
+  'Kitchen',
   'Washing Machine',
-  'Water Heater',
+  'TV',
+  'Fridge',
+  'Microwave',
 ];
 
 // User roles
-export const USER_ROLES = [
-  { value: 'user', label: 'Renter' },
-  { value: 'agent', label: 'Agent' },
-  { value: 'landlord', label: 'Landlord' },
-];
+export const USER_ROLES = {
+  ADMIN: 'admin',
+  AGENT: 'agent',
+  LANDLORD: 'landlord',
+  USER: 'user', // Regular user (renter)
+};
 
 // Verification methods
 export const VERIFICATION_METHODS = {
+  EMAIL: 'email',
+  PHONE: 'phone',
   ID: 'id',
-  LICENSE: 'license',
-  UTILITY: 'utility',
-  COMPANY: 'company',
-  NIN: 'nin',
-  BVN: 'bvn'
+  ADDRESS: 'address',
 };
 
-// Verification method options for display
 export const VERIFICATION_METHOD_OPTIONS = [
-  { value: VERIFICATION_METHODS.ID, label: 'ID Card' },
-  { value: VERIFICATION_METHODS.LICENSE, label: 'Driver\'s License' },
-  { value: VERIFICATION_METHODS.UTILITY, label: 'Utility Bill' },
-  { value: VERIFICATION_METHODS.COMPANY, label: 'Company Registration' },
-  { value: VERIFICATION_METHODS.NIN, label: 'National ID Number (NIN)' },
-  { value: VERIFICATION_METHODS.BVN, label: 'Bank Verification Number (BVN)' },
+  { value: VERIFICATION_METHODS.EMAIL, label: 'Email Verification' },
+  { value: VERIFICATION_METHODS.PHONE, label: 'Phone Verification' },
+  { value: VERIFICATION_METHODS.ID, label: 'ID Verification' },
+  { value: VERIFICATION_METHODS.ADDRESS, label: 'Address Verification' },
 ];
 
-// App-wide constants
+// App info
 export const APP_NAME = 'Kribs';
 export const APP_DESCRIPTION = 'Find your perfect home';
 export const CONTACT_EMAIL = 'support@kribs.com';
 
-// Pagination constants
+// Pagination
 export const DEFAULT_PAGE_SIZE = 10;
 
-// Map settings
+// Google Maps
 export const MAP_SETTINGS = {
+  API_KEY: GOOGLE_MAPS_API_KEY,
   DEFAULT_CENTER: { lat: 6.5244, lng: 3.3792 }, // Lagos, Nigeria
   DEFAULT_ZOOM: 12,
-  MAX_ZOOM: 18,
-  MIN_ZOOM: 5,
-  RADIUS_KM: 5, // Default radius for nearby searches
-  API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 };
+
+// Supabase storage bucket names
+export const STORAGE_BUCKETS = {
+  PROFILE_PICTURES: 'profile-pictures',
+  PROPERTY_PHOTOS: 'property-photos',
+  VERIFICATION_DOCUMENTS: 'verification-documents',
+};
+
+// File upload limits
+export const FILE_UPLOAD_LIMITS = {
+  PROFILE_PICTURE_SIZE: 2 * 1024 * 1024, // 2MB
+  PROPERTY_PHOTO_SIZE: 5 * 1024 * 1024, // 5MB per photo
+  MAX_PROPERTY_PHOTOS: 10, // Maximum 10 photos per property
+  VERIFICATION_DOCUMENT_SIZE: 5 * 1024 * 1024, // 5MB
+};
+
+// Accepted file types
+export const ACCEPTED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
+
+export const ACCEPTED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+];
+
+// Location search radius (in kilometers)
+export const DEFAULT_SEARCH_RADIUS_KM = 5;

@@ -1,9 +1,18 @@
 import React from 'react';
 import { useLocation } from 'wouter';
-import { formatDistanceToNow } from 'date-fns';
+import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Card, CardContent, CardFooter } from './ui/card';
-import { ROUTES } from '../config/constants';
+import { Button } from './ui/button';
+import { 
+  BedDouble, 
+  Bath, 
+  ArrowRightCircle, 
+  Star, 
+  MapPin, 
+  SquareIcon 
+} from 'lucide-react';
+import { formatPrice, formatDate } from '../lib/utils';
+import { cn } from '../lib/utils';
 
 interface ListingCardProps {
   id: number;
@@ -36,160 +45,139 @@ const ListingCard: React.FC<ListingCardProps> = ({
   squareMeters,
   featured = false,
   createdAt,
-  size = "small",
+  size = "large",
   onCardClick,
 }: ListingCardProps) => {
   const [, navigate] = useLocation();
   
-  // Format price with comma separators for thousands
-  const formattedPrice = new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    maximumFractionDigits: 0,
-  }).format(price);
-  
-  // Format created date
-  const formattedDate = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
-  
-  // Get the first photo or use a placeholder
-  const mainPhoto = photos && photos.length > 0 
-    ? photos[0] 
-    : 'https://via.placeholder.com/300x200?text=No+Image';
-  
-  // Handle card click
+  // Handle click on the card
   const handleClick = () => {
     if (onCardClick) {
       onCardClick(id);
     } else {
-      navigate(ROUTES.LISTING_DETAIL.replace(':id', id.toString()));
+      navigate(`/listings/${id}`);
     }
   };
   
-  // Different layouts based on size
-  if (size === "horizontal") {
-    return (
-      <Card 
-        className="overflow-hidden border cursor-pointer hover:shadow-md transition-shadow duration-200 flex flex-col sm:flex-row"
-        onClick={handleClick}
-      >
-        {/* Image section */}
-        <div className="relative h-48 sm:h-auto sm:w-1/3 overflow-hidden">
-          <img 
-            src={mainPhoto} 
-            alt={title}
-            className="object-cover w-full h-full"
-          />
-          {featured && (
-            <Badge 
-              variant="default" 
-              className="absolute top-2 left-2 bg-primary text-white"
-            >
-              Featured
-            </Badge>
-          )}
-          <Badge 
-            variant="outline" 
-            className="absolute top-2 right-2 bg-white"
-          >
-            {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
-          </Badge>
-        </div>
-        
-        {/* Content section */}
-        <div className="p-4 flex-1 flex flex-col">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-1 line-clamp-2">{title}</h3>
-            <p className="text-neutral-500 text-sm mb-3">{address}</p>
-            
-            {/* Details */}
-            <div className="flex gap-3 mb-3">
-              {bedrooms !== undefined && (
-                <span className="text-sm text-neutral-600">
-                  {bedrooms} {bedrooms === 1 ? 'Bed' : 'Beds'}
-                </span>
-              )}
-              {bathrooms !== undefined && (
-                <span className="text-sm text-neutral-600">
-                  {bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}
-                </span>
-              )}
-              {squareMeters !== undefined && (
-                <span className="text-sm text-neutral-600">
-                  {squareMeters} m²
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-end justify-between mt-2">
-            <div className="font-bold text-xl">{formattedPrice}</div>
-            <div className="text-xs text-neutral-500">{formattedDate}</div>
-          </div>
-        </div>
-      </Card>
-    );
-  }
+  // Default image if no photos provided
+  const mainPhoto = photos && photos.length > 0 
+    ? photos[0] 
+    : 'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&auto=format&fit=crop';
   
-  // Small and large card layouts (vertical)
+  // Format the date
+  const formattedDate = formatDate(createdAt);
+  
   return (
     <Card 
-      className={`overflow-hidden border cursor-pointer hover:shadow-md transition-shadow duration-200 flex flex-col ${size === 'large' ? 'h-full' : ''}`}
+      className={cn(
+        "overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md",
+        size === "small" && "max-w-[250px]",
+        size === "large" && "max-w-[350px]",
+        size === "horizontal" && "max-w-full"
+      )}
       onClick={handleClick}
     >
-      {/* Image */}
-      <div className={`relative ${size === 'large' ? 'h-64' : 'h-48'} overflow-hidden`}>
-        <img 
-          src={mainPhoto} 
-          alt={title}
-          className="object-cover w-full h-full"
-        />
-        {featured && (
-          <Badge 
-            variant="default" 
-            className="absolute top-2 left-2 bg-primary text-white"
-          >
-            Featured
-          </Badge>
-        )}
-        <Badge 
-          variant="outline" 
-          className="absolute top-2 right-2 bg-white"
-        >
-          {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
-        </Badge>
-      </div>
-      
-      {/* Content */}
-      <CardContent className={`p-4 ${size === 'large' ? 'flex-1' : ''}`}>
-        <h3 className={`${size === 'large' ? 'text-xl' : 'text-lg'} font-semibold mb-1 line-clamp-2`}>
-          {title}
-        </h3>
-        <p className="text-neutral-500 text-sm mb-3">{address}</p>
+      <div className={cn(
+        "relative",
+        size === "horizontal" ? "flex" : "flex-col"
+      )}>
+        {/* Property image */}
+        <div className={cn(
+          "relative overflow-hidden",
+          size === "small" && "h-[150px]",
+          size === "large" && "h-[200px]",
+          size === "horizontal" && "h-[200px] w-[200px] flex-shrink-0"
+        )}>
+          <img 
+            src={mainPhoto}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+          />
+          
+          {/* Featured badge */}
+          {featured && (
+            <div className="absolute top-2 left-2">
+              <Badge className="bg-yellow-400 text-black hover:bg-yellow-500">
+                <Star className="w-3 h-3 mr-1" /> Featured
+              </Badge>
+            </div>
+          )}
+          
+          {/* Property type badge */}
+          <div className="absolute top-2 right-2">
+            <Badge variant="outline" className="bg-black/60 text-white border-none">
+              {type}
+            </Badge>
+          </div>
+        </div>
         
-        {/* Details */}
-        <div className="flex gap-3 mb-3">
-          {bedrooms !== undefined && (
-            <span className="text-sm text-neutral-600">
-              {bedrooms} {bedrooms === 1 ? 'Bed' : 'Beds'}
+        {/* Property details */}
+        <div className={cn(
+          "p-4 flex flex-col",
+          size === "horizontal" && "flex-1"
+        )}>
+          {/* Title */}
+          <h3 className={cn(
+            "font-semibold line-clamp-2 mb-1",
+            size === "small" ? "text-sm" : "text-base"
+          )}>
+            {title}
+          </h3>
+          
+          {/* Location */}
+          <div className="flex items-center text-neutral-500 mb-2">
+            <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+            <span className={cn(
+              "truncate",
+              size === "small" ? "text-xs" : "text-sm"
+            )}>
+              {address}
             </span>
-          )}
-          {bathrooms !== undefined && (
-            <span className="text-sm text-neutral-600">
-              {bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}
-            </span>
-          )}
-          {squareMeters !== undefined && (
-            <span className="text-sm text-neutral-600">
-              {squareMeters} m²
-            </span>
+          </div>
+          
+          {/* Price */}
+          <div className="text-primary font-bold mb-3">
+            {formatPrice(price)}
+            <span className="text-neutral-500 font-normal text-sm"> / month</span>
+          </div>
+          
+          {/* Features */}
+          <div className={cn(
+            "flex items-center space-x-3 text-sm text-neutral-600 mt-auto",
+            size === "small" && "text-xs"
+          )}>
+            {bedrooms !== undefined && (
+              <div className="flex items-center">
+                <BedDouble className="w-4 h-4 mr-1 text-neutral-400" />
+                <span>{bedrooms}</span>
+              </div>
+            )}
+            
+            {bathrooms !== undefined && (
+              <div className="flex items-center">
+                <Bath className="w-4 h-4 mr-1 text-neutral-400" />
+                <span>{bathrooms}</span>
+              </div>
+            )}
+            
+            {squareMeters !== undefined && (
+              <div className="flex items-center">
+                <SquareIcon className="w-4 h-4 mr-1 text-neutral-400" />
+                <span>{squareMeters} m²</span>
+              </div>
+            )}
+          </div>
+          
+          {/* View button (shown only on horizontal cards or on hover) */}
+          {size === "horizontal" && (
+            <div className="mt-4">
+              <Button size="sm" className="w-full sm:w-auto">
+                View Details <ArrowRightCircle className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
-      </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        <div className="font-bold text-xl">{formattedPrice}</div>
-        <div className="text-xs text-neutral-500">{formattedDate}</div>
-      </CardFooter>
+      </div>
     </Card>
   );
 };

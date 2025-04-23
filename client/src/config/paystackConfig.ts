@@ -1,29 +1,29 @@
-// Paystack configuration
-export const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+import { PAYSTACK_PUBLIC_KEY, CONTACT_FEE, LISTING_FEE, FEATURED_LISTING_FEE } from './env';
+import { PaystackTransactionProps } from '../types';
 
-// Payment amounts in naira
+// Payment fee constants
 export const PAYMENT_AMOUNTS = {
-  CONTACT_FEE: 500, // ₦500 to view contact info
-  LISTING_FEE: 1000, // ₦1000 to list a property
-  FEATURED_FEE: 5000, // ₦5000 to feature a property
+  CONTACT_FEE,
+  LISTING_FEE,
+  FEATURED_LISTING_FEE
 };
 
-interface PaystackWindow extends Window {
-  PaystackPop?: {
-    setup(config: any): { openIframe(): void };
-  }
-}
+// Payment types
+export const PAYMENT_TYPES = {
+  CONTACT_ACCESS: 'contact_access',
+  LISTING_CREATION: 'listing_creation',
+  FEATURED_LISTING: 'featured_listing'
+};
 
-declare const window: PaystackWindow;
-
-// Function to load the Paystack script
-export const loadPaystackScript = async (): Promise<void> => {
-  return new Promise((resolve, reject) => {
+// Load Paystack script
+export const loadPaystackScript = () => {
+  return new Promise<void>((resolve, reject) => {
     if (window.PaystackPop) {
+      console.log('Paystack already loaded');
       resolve();
       return;
     }
-    
+
     const script = document.createElement('script');
     script.src = 'https://js.paystack.co/v1/inline.js';
     script.async = true;
@@ -38,60 +38,71 @@ export const loadPaystackScript = async (): Promise<void> => {
       reject(new Error('Failed to load Paystack script'));
     };
     
-    document.body.appendChild(script);
+    document.head.appendChild(script);
   });
 };
 
-// Paystack payment handler
-export const handlePaystackPayment = async (config: {
-  email: string;
-  amount: number;
-  onSuccess: (response: { reference: string }) => void;
-  onCancel: () => void;
-  reference?: string;
-  metadata?: any;
-}): Promise<void> => {
+/**
+ * Generate a unique transaction reference
+ */
+export const generateReference = (): string => {
+  const timestamp = new Date().getTime();
+  const random = Math.floor(Math.random() * 1000000);
+  return `kribs-${timestamp}-${random}`;
+};
+
+/**
+ * Handle payment using Paystack
+ */
+export const handlePaystackPayment = ({
+  email,
+  amount,
+  metadata = {},
+  onSuccess,
+  onCancel
+}: PaystackTransactionProps) => {
   if (!PAYSTACK_PUBLIC_KEY) {
-    throw new Error('Paystack public key is missing. Please check your environment variables.');
+    console.error('Paystack public key is missing');
+    throw new Error('Paystack public key is missing');
   }
-  
-  // Ensure the script is loaded
-  await loadPaystackScript();
-  
+
   if (!window.PaystackPop) {
-    throw new Error('Paystack script not loaded properly');
+    console.error('Paystack script not loaded');
+    throw new Error('Paystack script not loaded');
   }
+
+  const reference = generateReference();
   
-  // Initialize payment
-  const paystack = window.PaystackPop.setup({
+  const handler = window.PaystackPop.setup({
     key: PAYSTACK_PUBLIC_KEY,
-    email: config.email,
-    amount: config.amount * 100, // Convert to kobo (smallest currency unit)
+    email,
+    amount: amount * 100, // Paystack expects amount in kobo (1 Naira = 100 Kobo)
     currency: 'NGN',
-    ref: config.reference || generateReference(),
-    metadata: config.metadata || {},
-    callback: (response: { reference: string }) => {
-      config.onSuccess(response);
+    ref: reference,
+    metadata: {
+      ...metadata,
+      custom_fields: [
+        {
+          display_name: "Payment For",
+          variable_name: "payment_for",
+          value: metadata.payment_type || "Kribs Service"
+        }
+      ]
+    },
+    callback: (response: any) => {
+      onSuccess(response);
     },
     onClose: () => {
-      config.onCancel();
-    },
+      onCancel();
+    }
   });
   
-  // Open the payment modal
-  paystack.openIframe();
-};
-
-// Generate a unique reference for the transaction
-const generateReference = (): string => {
-  const timestamp = new Date().getTime().toString();
-  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-  return `KRIBS-${timestamp}-${random}`;
+  handler.openIframe();
 };
 
 export default {
-  PAYSTACK_PUBLIC_KEY,
-  PAYMENT_AMOUNTS,
   loadPaystackScript,
   handlePaystackPayment,
+  PAYMENT_TYPES,
+  PAYMENT_AMOUNTS
 };

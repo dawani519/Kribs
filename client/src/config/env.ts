@@ -1,23 +1,47 @@
-// Environment variables with fallbacks
+// Environment variables for the frontend
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 export const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
 
-// Constants
+// App constants that would normally be environment variables
 export const CONTACT_FEE = 1000; // ₦1,000
 export const LISTING_FEE = 2000; // ₦2,000
 export const FEATURED_LISTING_FEE = 5000; // ₦5,000
 
-// Validation
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('Supabase credentials are missing. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.');
-}
+// Function to check if all required environment variables are set
+export const checkEnvVariables = (): boolean => {
+  const requiredVars = [
+    { name: 'VITE_SUPABASE_URL', value: SUPABASE_URL },
+    { name: 'VITE_SUPABASE_ANON_KEY', value: SUPABASE_ANON_KEY },
+    { name: 'VITE_GOOGLE_MAPS_API_KEY', value: GOOGLE_MAPS_API_KEY },
+    { name: 'VITE_PAYSTACK_PUBLIC_KEY', value: PAYSTACK_PUBLIC_KEY },
+  ];
+  
+  let allPresent = true;
+  const missing: string[] = [];
+  
+  requiredVars.forEach(({ name, value }) => {
+    if (!value) {
+      allPresent = false;
+      missing.push(name);
+    }
+  });
+  
+  if (!allPresent) {
+    console.error('Missing environment variables:', missing.join(', '));
+  }
+  
+  return allPresent;
+};
 
-if (!GOOGLE_MAPS_API_KEY) {
-  console.warn('Google Maps API key is missing. Map functionality will be limited.');
-}
-
-if (!PAYSTACK_PUBLIC_KEY) {
-  console.error('Paystack public key is missing. Make sure VITE_PAYSTACK_PUBLIC_KEY is set in your environment variables.');
-}
+export default {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  GOOGLE_MAPS_API_KEY,
+  PAYSTACK_PUBLIC_KEY,
+  CONTACT_FEE,
+  LISTING_FEE,
+  FEATURED_LISTING_FEE,
+  checkEnvVariables,
+};
