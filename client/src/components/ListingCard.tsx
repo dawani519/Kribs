@@ -1,16 +1,9 @@
 import React from 'react';
 import { useLocation } from 'wouter';
 import { formatDistanceToNow } from 'date-fns';
-import { FaBed, FaBath, FaSquare, FaStar } from 'react-icons/fa';
-import { IoBusiness } from 'react-icons/io5';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardFooter } from './ui/card';
-
-interface Amenity {
-  id: number;
-  listingId: number;
-  name: string;
-}
+import { ROUTES } from '../config/constants';
 
 interface ListingCardProps {
   id: number;
@@ -43,162 +36,159 @@ const ListingCard: React.FC<ListingCardProps> = ({
   squareMeters,
   featured = false,
   createdAt,
-  size = "large",
+  size = "small",
   onCardClick,
 }: ListingCardProps) => {
   const [, navigate] = useLocation();
   
-  // Format listing time
-  const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+  // Format price with comma separators for thousands
+  const formattedPrice = new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(price);
   
-  // Format price with commas for thousands
-  const formattedPrice = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // Format created date
+  const formattedDate = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+  
+  // Get the first photo or use a placeholder
+  const mainPhoto = photos && photos.length > 0 
+    ? photos[0] 
+    : 'https://via.placeholder.com/300x200?text=No+Image';
   
   // Handle card click
   const handleClick = () => {
     if (onCardClick) {
       onCardClick(id);
     } else {
-      navigate(`/listings/${id}`);
+      navigate(ROUTES.LISTING_DETAIL.replace(':id', id.toString()));
     }
   };
   
-  // Render horizontal layout
+  // Different layouts based on size
   if (size === "horizontal") {
     return (
       <Card 
-        className="overflow-hidden border border-neutral-200 hover:border-primary/50 transition-colors cursor-pointer mb-4 flex h-40 flex-row"
+        className="overflow-hidden border cursor-pointer hover:shadow-md transition-shadow duration-200 flex flex-col sm:flex-row"
         onClick={handleClick}
       >
-        <div 
-          className="relative h-full w-1/3 bg-neutral-100"
-          style={{ 
-            backgroundImage: photos && photos.length > 0 ? `url(${photos[0]})` : 'none',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-        >
-          {photos && photos.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
-              <IoBusiness size={32} />
-            </div>
-          )}
-          
+        {/* Image section */}
+        <div className="relative h-48 sm:h-auto sm:w-1/3 overflow-hidden">
+          <img 
+            src={mainPhoto} 
+            alt={title}
+            className="object-cover w-full h-full"
+          />
           {featured && (
-            <Badge className="absolute top-2 left-2 bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
-              <FaStar size={12} />
-              <span>Featured</span>
+            <Badge 
+              variant="default" 
+              className="absolute top-2 left-2 bg-primary text-white"
+            >
+              Featured
             </Badge>
           )}
-          
-          <Badge className="absolute bottom-2 left-2 bg-black/60 text-white hover:bg-black/60">
+          <Badge 
+            variant="outline" 
+            className="absolute top-2 right-2 bg-white"
+          >
             {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
           </Badge>
         </div>
         
-        <div className="flex-1 p-4 flex flex-col justify-between">
-          <div>
-            <h3 className="font-medium text-lg text-neutral-800 mb-1 line-clamp-1">{title}</h3>
-            <p className="text-neutral-500 text-sm mb-2 line-clamp-1">{address}</p>
+        {/* Content section */}
+        <div className="p-4 flex-1 flex flex-col">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold mb-1 line-clamp-2">{title}</h3>
+            <p className="text-neutral-500 text-sm mb-3">{address}</p>
             
-            <div className="flex items-center gap-3 text-sm text-neutral-600">
+            {/* Details */}
+            <div className="flex gap-3 mb-3">
               {bedrooms !== undefined && (
-                <div className="flex items-center gap-1">
-                  <FaBed />
-                  <span>{bedrooms}</span>
-                </div>
+                <span className="text-sm text-neutral-600">
+                  {bedrooms} {bedrooms === 1 ? 'Bed' : 'Beds'}
+                </span>
               )}
-              
               {bathrooms !== undefined && (
-                <div className="flex items-center gap-1">
-                  <FaBath />
-                  <span>{bathrooms}</span>
-                </div>
+                <span className="text-sm text-neutral-600">
+                  {bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}
+                </span>
               )}
-              
               {squareMeters !== undefined && (
-                <div className="flex items-center gap-1">
-                  <FaSquare />
-                  <span>{squareMeters} m²</span>
-                </div>
+                <span className="text-sm text-neutral-600">
+                  {squareMeters} m²
+                </span>
               )}
             </div>
           </div>
           
-          <div className="flex justify-between items-center mt-2">
-            <div className="text-primary font-semibold">₦{formattedPrice}</div>
-            <div className="text-xs text-neutral-400">{timeAgo}</div>
+          <div className="flex items-end justify-between mt-2">
+            <div className="font-bold text-xl">{formattedPrice}</div>
+            <div className="text-xs text-neutral-500">{formattedDate}</div>
           </div>
         </div>
       </Card>
     );
   }
   
-  // Render small or large card
+  // Small and large card layouts (vertical)
   return (
     <Card 
-      className="overflow-hidden border border-neutral-200 hover:border-primary/50 transition-colors cursor-pointer"
+      className={`overflow-hidden border cursor-pointer hover:shadow-md transition-shadow duration-200 flex flex-col ${size === 'large' ? 'h-full' : ''}`}
       onClick={handleClick}
     >
-      <div 
-        className={`relative w-full ${size === "small" ? "h-40" : "h-48"} bg-neutral-100`}
-        style={{ 
-          backgroundImage: photos && photos.length > 0 ? `url(${photos[0]})` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-      >
-        {photos && photos.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
-            <IoBusiness size={32} />
-          </div>
-        )}
-        
+      {/* Image */}
+      <div className={`relative ${size === 'large' ? 'h-64' : 'h-48'} overflow-hidden`}>
+        <img 
+          src={mainPhoto} 
+          alt={title}
+          className="object-cover w-full h-full"
+        />
         {featured && (
-          <Badge className="absolute top-2 left-2 bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
-            <FaStar size={12} />
-            <span>Featured</span>
+          <Badge 
+            variant="default" 
+            className="absolute top-2 left-2 bg-primary text-white"
+          >
+            Featured
           </Badge>
         )}
-        
-        <Badge className="absolute bottom-2 left-2 bg-black/60 text-white hover:bg-black/60">
+        <Badge 
+          variant="outline" 
+          className="absolute top-2 right-2 bg-white"
+        >
           {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
         </Badge>
       </div>
       
-      <CardContent className={`pt-4 ${size === "small" ? "pb-2 px-3" : "pb-3 px-4"}`}>
-        <h3 className={`font-medium ${size === "small" ? "text-base" : "text-lg"} text-neutral-800 mb-1 line-clamp-1`}>
+      {/* Content */}
+      <CardContent className={`p-4 ${size === 'large' ? 'flex-1' : ''}`}>
+        <h3 className={`${size === 'large' ? 'text-xl' : 'text-lg'} font-semibold mb-1 line-clamp-2`}>
           {title}
         </h3>
-        <p className="text-neutral-500 text-sm mb-2 line-clamp-1">{address}</p>
+        <p className="text-neutral-500 text-sm mb-3">{address}</p>
         
-        <div className="flex items-center gap-3 text-sm text-neutral-600">
+        {/* Details */}
+        <div className="flex gap-3 mb-3">
           {bedrooms !== undefined && (
-            <div className="flex items-center gap-1">
-              <FaBed />
-              <span>{bedrooms}</span>
-            </div>
+            <span className="text-sm text-neutral-600">
+              {bedrooms} {bedrooms === 1 ? 'Bed' : 'Beds'}
+            </span>
           )}
-          
           {bathrooms !== undefined && (
-            <div className="flex items-center gap-1">
-              <FaBath />
-              <span>{bathrooms}</span>
-            </div>
+            <span className="text-sm text-neutral-600">
+              {bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}
+            </span>
           )}
-          
           {squareMeters !== undefined && (
-            <div className="flex items-center gap-1">
-              <FaSquare />
-              <span>{squareMeters} m²</span>
-            </div>
+            <span className="text-sm text-neutral-600">
+              {squareMeters} m²
+            </span>
           )}
         </div>
       </CardContent>
       
-      <CardFooter className={`flex justify-between items-center pt-0 ${size === "small" ? "pb-3 px-3" : "pb-4 px-4"} border-t border-neutral-100`}>
-        <div className="text-primary font-semibold">₦{formattedPrice}</div>
-        <div className="text-xs text-neutral-400">{timeAgo}</div>
+      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+        <div className="font-bold text-xl">{formattedPrice}</div>
+        <div className="text-xs text-neutral-500">{formattedDate}</div>
       </CardFooter>
     </Card>
   );
