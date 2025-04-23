@@ -1,22 +1,103 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 import { AppDispatch, RootState } from '../../redux/store';
-import { fetchFeaturedListings } from '../../redux/listingSlice';
 import { ROUTES } from '../../config/constants';
 import { APP_NAME } from '../../config/constants';
 import ListingGrid from '../../components/ListingGrid';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
+import { Listing } from '../../types';
 
 const HomePage: React.FC = () => {
   const [, navigate] = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-  const { featuredListings, isLoading } = useSelector((state: RootState) => state.listings);
+  const { isLoading } = useSelector((state: RootState) => state.listings);
+  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
   
   useEffect(() => {
-    dispatch(fetchFeaturedListings());
-  }, [dispatch]);
+    // In a real implementation, we would dispatch an action to fetch featured listings
+    // For now, we'll use a timeout to simulate an API call
+    const timer = setTimeout(() => {
+      setFeaturedListings([
+        {
+          id: 1,
+          userId: 1,
+          title: "Modern 3 Bedroom Apartment",
+          description: "Beautiful apartment with a great view",
+          type: "rent",
+          category: "apartment",
+          price: 350000,
+          address: "14 Admiralty Way",
+          city: "Lekki",
+          state: "Lagos",
+          latitude: 6.4281,
+          longitude: 3.4219,
+          bedrooms: 3,
+          bathrooms: 2,
+          squareMeters: 120,
+          photos: [
+            "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YXBhcnRtZW50fGVufDB8fDB8fHww&auto=format&fit=crop&w=600&q=60"
+          ],
+          amenities: ["Air Conditioning", "Wifi", "Parking"],
+          featured: true,
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 2,
+          userId: 2,
+          title: "Luxury Villa with Pool",
+          description: "Spacious villa with private pool and garden",
+          type: "sale",
+          category: "house",
+          price: 75000000,
+          address: "5 Banana Island Road",
+          city: "Ikoyi",
+          state: "Lagos",
+          latitude: 6.4548,
+          longitude: 3.4737,
+          bedrooms: 5,
+          bathrooms: 6,
+          squareMeters: 450,
+          photos: [
+            "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aG91c2V8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=600&q=60"
+          ],
+          amenities: ["Pool", "Garden", "Security", "Air Conditioning"],
+          featured: true,
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 3,
+          userId: 3,
+          title: "Office Space in Victoria Island",
+          description: "Prime office location with modern amenities",
+          type: "rent",
+          category: "commercial",
+          price: 850000,
+          address: "23 Kofo Abayomi Street",
+          city: "Victoria Island",
+          state: "Lagos",
+          latitude: 6.4271,
+          longitude: 3.4207,
+          squareMeters: 200,
+          photos: [
+            "https://images.unsplash.com/photo-1497366754035-f200968a6e72?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8b2ZmaWNlfGVufDB8fDB8fHww&auto=format&fit=crop&w=600&q=60"
+          ],
+          amenities: ["Elevator", "24/7 Power", "Security", "Parking"],
+          featured: true,
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ]);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
   
   const handleCreateListing = () => {
     navigate(ROUTES.CREATE_LISTING);

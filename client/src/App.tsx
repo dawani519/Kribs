@@ -32,8 +32,9 @@ import { ROUTES } from "./config/constants";
 
 // Protected route component
 function ProtectedRoute({ component: Component, ...rest }: any) {
-  const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
+  const authData = useAuth();
+  const { isAuthenticated, isLoading } = authData;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -52,8 +53,9 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
 
 // Main layout with navigation bars
 function MainLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
   const [location] = useLocation();
+  const authData = useAuth();
+  const { isAuthenticated } = authData;
   
   // Don't show navigation on auth screens
   const isAuthScreen = [ROUTES.LOGIN, ROUTES.REGISTER, ROUTES.REGISTER_ROLE, ROUTES.VERIFICATION].includes(location);

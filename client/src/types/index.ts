@@ -1,21 +1,6 @@
-// User Types
-export interface User {
-  id: number | string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  role: 'user' | 'agent' | 'landlord' | 'admin';
-  companyName?: string;
-  licenseNumber?: string;
-  isVerified: boolean;
-  verificationMethod?: 'id' | 'license' | 'utility' | 'company';
-  verificationId?: number;
-  createdAt: string;
-  avatarUrl?: string;
-}
+// Type definitions for the application
 
+// User related types
 export interface UserCredentials {
   email: string;
   password: string;
@@ -26,13 +11,23 @@ export interface RegistrationData {
   password: string;
   firstName: string;
   lastName: string;
-  phone: string;
-  role: 'user' | 'agent' | 'landlord';
-  companyName?: string;
-  licenseNumber?: string;
+  phoneNumber: string;
+  role: string;
 }
 
-// Listing Types
+export interface UserProfile {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  role: string;
+  avatar?: string;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+// Listing related types
 export interface Listing {
   id: number;
   userId: number;
@@ -41,85 +36,47 @@ export interface Listing {
   type: 'rent' | 'sale' | 'short_stay';
   category: 'apartment' | 'house' | 'land' | 'commercial' | 'shared';
   price: number;
-  securityDeposit?: number;
   address: string;
   city: string;
   state: string;
-  country: string;
   latitude: number;
   longitude: number;
   bedrooms?: number;
   bathrooms?: number;
   squareMeters?: number;
-  furnished: boolean;
-  petFriendly: boolean;
-  hasParking: boolean;
-  availableFrom: string;
   photos: string[];
-  approved: boolean;
+  amenities: string[];
   featured: boolean;
-  isFeatured: boolean;
-  contactPhone: string;
+  approved: boolean;
   createdAt: string;
   updatedAt: string;
-  amenities?: Amenity[];
-  userName?: string;
 }
 
-export interface ListingFormData {
-  title: string;
-  description: string;
-  type: 'rent' | 'sale' | 'short_stay';
-  category: 'apartment' | 'house' | 'land' | 'commercial' | 'shared';
-  price: number;
-  securityDeposit?: number;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  bedrooms?: number;
-  bathrooms?: number;
-  squareMeters?: number;
-  furnished: boolean;
-  petFriendly: boolean;
-  hasParking: boolean;
-  availableFrom: Date;
-  photos: File[];
-  contactPhone: string;
-  amenities?: string[];
-}
-
-export interface Amenity {
-  id: number;
-  listingId: number;
-  name: string;
-}
-
-export interface ListingFilters {
+export interface ListingFilter {
+  query?: string;
   type?: string;
   category?: string;
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;
-  bathrooms?: number;
-  furnished?: boolean;
-  location?: string;
-  radius?: number;
+  nearMe?: boolean;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
-// Chat Types
+// Conversation and message types
 export interface Conversation {
   id: number;
-  listingId: number;
-  ownerId: number;
   renterId: number;
+  ownerId: number;
+  listingId: number;
   lastMessageTime: string;
-  createdAt: string;
-  listingTitle?: string;
   ownerName?: string;
   renterName?: string;
+  listingTitle?: string;
+  listingPhoto?: string;
   unreadCount?: number;
 }
 
@@ -127,118 +84,55 @@ export interface Message {
   id: number;
   conversationId: number;
   senderId: number;
-  text: string;
+  content: string;
   isRead: boolean;
   createdAt: string;
 }
 
-export interface NewMessage {
-  conversationId: number;
-  text: string;
-}
-
-export interface NewConversation {
-  listingId: number;
-  ownerId: number;
-}
-
-// Payment Types
+// Payment related types
 export interface Payment {
   id: number;
   userId: number;
+  amount: number;
+  type: 'contact_fee' | 'listing_fee' | 'featured_fee';
+  status: 'pending' | 'success' | 'failed';
+  reference: string;
+  description: string;
   listingId?: number;
-  type: 'listing_fee' | 'contact_fee' | 'featured_fee';
-  amount: number;
-  status: 'pending' | 'completed' | 'failed';
-  reference: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface PaymentInitiation {
-  paymentId: number;
-  amount: number;
-  reference: string;
-  authorizationUrl: string;
-}
-
-// Verification Types
-export interface Verification {
-  id: number;
+export interface ContactAccess {
   userId: number;
-  type: 'id' | 'license' | 'utility' | 'company';
-  documentUrl: string;
-  status: 'pending' | 'approved' | 'rejected';
-  comments?: string;
-  createdAt: string;
-  updatedAt: string;
+  listingId: number;
+  hasAccess: boolean;
+  expiresAt?: string;
+  paymentId?: number;
 }
 
-export interface VerificationFormData {
-  type: 'id' | 'license' | 'utility' | 'company';
-  document: File;
-}
-
-// Notification Types
+// Notification types
 export interface Notification {
   id: number;
   userId: number;
-  type: 'message' | 'listing_approved' | 'listing_rejected' | 'verification_approved' | 'verification_rejected' | 'payment_confirmed';
+  type: 'message' | 'payment' | 'listing' | 'verification' | 'system';
   title: string;
   message: string;
   isRead: boolean;
-  relatedId?: number;
+  actionLink?: string;
+  referenceId?: number;
   createdAt: string;
 }
 
-// Redux State Types
-export interface AuthState {
-  user: User | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface ListingState {
-  listings: Listing[];
-  userListings: Listing[];
-  featuredListings: Listing[];
-  currentListing: Listing | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface ChatState {
-  conversations: Conversation[];
-  selectedConversation: Conversation | null;
-  messages: Message[];
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface PaymentState {
-  payments: Payment[];
-  pendingPayment: Payment | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface VerificationState {
-  verifications: Verification[];
-  currentVerification: Verification | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface AdminState {
-  users: User[];
-  pendingListings: Listing[];
-  pendingVerifications: Verification[];
-  statistics: {
-    totalUsers: number;
-    totalListings: number;
-    totalPayments: number;
-    revenue: number;
-  };
-  isLoading: boolean;
-  error: string | null;
+// Verification types
+export interface Verification {
+  id: number;
+  userId: number;
+  type: string;
+  documentNumber: string;
+  documentImage?: string;
+  status: 'pending' | 'verified' | 'rejected';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
