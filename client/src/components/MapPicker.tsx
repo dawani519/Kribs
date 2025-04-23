@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GOOGLE_MAPS_API_KEY } from '../config/env';
-import { Alert, AlertDescription } from './ui/alert';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { MAP_SETTINGS } from '../config/constants';
 
 interface Coordinates {
   lat: number;
@@ -21,263 +21,245 @@ interface MapPickerProps {
  * MapPicker component - allows selecting a location on a map
  */
 const MapPicker: React.FC<MapPickerProps> = ({
-  initialCoordinates,
+  initialCoordinates = MAP_SETTINGS.DEFAULT_CENTER,
   initialAddress = '',
   onLocationSelect,
-  height = '300px',
+  height = '400px',
   readOnly = false,
 }: MapPickerProps) => {
+  const [coordinates, setCoordinates] = useState<Coordinates>(initialCoordinates);
+  const [address, setAddress] = useState<string>(initialAddress);
+  const [searchAddress, setSearchAddress] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isMapLoaded, setIsMapLoaded] = useState<boolean>(false);
+  
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [marker, setMarker] = useState<google.maps.Marker | null>(null);
-  const [address, setAddress] = useState(initialAddress);
-  const [addressInput, setAddressInput] = useState(initialAddress);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const googleMapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
   
-  // Check if Google Maps API is available
-  const isGoogleMapsAvailable = !!(GOOGLE_MAPS_API_KEY && window.google?.maps);
-  
-  // Initialize the map
+  // Load Google Maps script
   useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) {
-      setError('Google Maps API key is missing');
-      return;
-    }
-    
-    if (mapRef.current && !map && window.google?.maps) {
-      setGoogleMapsLoaded(true);
-      
-      // Default coordinates (Lagos, Nigeria)
-      const defaultCoordinates = { lat: 6.5244, lng: 3.3792 };
-      const coordinates = initialCoordinates || defaultCoordinates;
-      
-      // Create the map
-      const mapInstance = new window.google.maps.Map(mapRef.current, {
-        center: coordinates,
-        zoom: 14,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      });
-      
-      // Create a marker at the specified coordinates
-      const markerInstance = new window.google.maps.Marker({
-        position: coordinates,
-        map: mapInstance,
-        draggable: !readOnly,
-      });
-      
-      // Add event listener for marker drag end
-      if (!readOnly) {
-        markerInstance.addListener('dragend', () => {
-          const position = markerInstance.getPosition();
-          if (position) {
-            const newCoordinates = { lat: position.lat(), lng: position.lng() };
-            reverseGeocode(newCoordinates);
-          }
-        });
-        
-        // Add event listener for map click
-        mapInstance.addListener('click', (event: google.maps.MapMouseEvent) => {
-          const position = event.latLng;
-          if (position) {
-            markerInstance.setPosition(position);
-            const newCoordinates = { lat: position.lat(), lng: position.lng() };
-            reverseGeocode(newCoordinates);
-          }
-        });
+    const loadGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        initializeMap();
+        return;
       }
       
-      // Save instances to state
-      setMap(mapInstance);
-      setMarker(markerInstance);
+      const googleMapsApiKey = MAP_SETTINGS.API_KEY;
+      if (!googleMapsApiKey) {
+        console.error('Google Maps API key is missing');
+        return;
+      }
       
-      // If initialAddress is not provided but initialCoordinates is, reverse geocode to get the address
-      if (initialCoordinates && !initialAddress) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = () => {
+        initializeMap();
+      };
+      
+      script.onerror = () => {
+        console.error('Failed to load Google Maps script');
+      };
+      
+      document.head.appendChild(script);
+    };
+    
+    loadGoogleMaps();
+    
+    return () => {
+      // Clean up Google Maps instance if needed
+    };
+  }, []);
+  
+  // Initialize the map
+  const initializeMap = () => {
+    if (!mapRef.current || !window.google) return;
+    
+    const mapOptions: google.maps.MapOptions = {
+      center: coordinates,
+      zoom: MAP_SETTINGS.DEFAULT_ZOOM,
+      zoomControl: true,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
+    };
+    
+    const map = new window.google.maps.Map(mapRef.current, mapOptions);
+    googleMapRef.current = map;
+    
+    // Add marker
+    const marker = new window.google.maps.Marker({
+      position: coordinates,
+      map,
+      draggable: !readOnly,
+      animation: window.google.maps.Animation.DROP,
+    });
+    markerRef.current = marker;
+    
+    // If not in read-only mode, set up events for marker drag
+    if (!readOnly) {
+      // When marker is dragged, update coordinates and get address
+      marker.addListener('dragend', () => {
+        if (marker.getPosition()) {
+          const position = marker.getPosition()!.toJSON();
+          setCoordinates(position);
+          reverseGeocode(position);
+        }
+      });
+      
+      // Click on map to move marker
+      map.addListener('click', (e: google.maps.MapMouseEvent) => {
+        if (!e.latLng) return;
+        
+        const position = e.latLng.toJSON();
+        marker.setPosition(position);
+        setCoordinates(position);
+        reverseGeocode(position);
+      });
+    }
+    
+    // If we have an initial address, geocode it to get coordinates
+    if (initialAddress && !initialCoordinates) {
+      geocodeAddress(initialAddress);
+    } else if (initialCoordinates) {
+      // If we have initial coordinates but no address, reverse geocode to get address
+      if (!initialAddress) {
         reverseGeocode(initialCoordinates);
       }
     }
-  }, [GOOGLE_MAPS_API_KEY, window.google?.maps]);
-  
-  // Update marker position when initialCoordinates change
-  useEffect(() => {
-    if (map && marker && initialCoordinates) {
-      marker.setPosition(initialCoordinates);
-      map.setCenter(initialCoordinates);
-    }
-  }, [initialCoordinates, map, marker]);
-  
-  // Update address and addressInput when initialAddress changes
-  useEffect(() => {
-    setAddress(initialAddress);
-    setAddressInput(initialAddress);
-  }, [initialAddress]);
-  
-  // Geocode address to coordinates
-  const geocodeAddress = async () => {
-    if (!addressInput.trim() || !window.google?.maps) return;
     
-    setLoading(true);
-    setError(null);
+    setIsMapLoaded(true);
+  };
+  
+  // Geocode address to get coordinates
+  const geocodeAddress = async (addressToGeocode: string) => {
+    if (!window.google || !googleMapRef.current) return;
+    
+    setIsLoading(true);
     
     try {
       const geocoder = new window.google.maps.Geocoder();
       
-      geocoder.geocode({ address: addressInput }, (results, status) => {
+      geocoder.geocode({ address: addressToGeocode }, (results, status) => {
         if (status === 'OK' && results && results[0]) {
-          const location = results[0].geometry.location;
-          const newCoordinates = { lat: location.lat(), lng: location.lng() };
+          const location = results[0].geometry.location.toJSON();
           
-          // Update map and marker
-          if (map && marker) {
-            map.setCenter(newCoordinates);
-            marker.setPosition(newCoordinates);
+          setCoordinates(location);
+          setAddress(results[0].formatted_address);
+          
+          // Update marker position
+          if (markerRef.current) {
+            markerRef.current.setPosition(location);
           }
           
-          // Update address
-          const formattedAddress = results[0].formatted_address;
-          setAddress(formattedAddress);
+          // Center map on location
+          googleMapRef.current?.setCenter(location);
           
-          // Callback with new coordinates and address
+          // Call the callback with new location
           if (onLocationSelect) {
-            onLocationSelect(newCoordinates, formattedAddress);
+            onLocationSelect(location, results[0].formatted_address);
           }
         } else {
-          setError('Could not find location. Please try a different address.');
+          console.error('Geocode was not successful:', status);
         }
         
-        setLoading(false);
+        setIsLoading(false);
       });
     } catch (error) {
-      setError('Error finding location. Please try again.');
-      setLoading(false);
+      console.error('Error geocoding address:', error);
+      setIsLoading(false);
     }
   };
   
-  // Reverse geocode coordinates to address
-  const reverseGeocode = async (coordinates: Coordinates) => {
-    if (!window.google?.maps) return;
+  // Reverse geocode coordinates to get address
+  const reverseGeocode = async (coords: Coordinates) => {
+    if (!window.google) return;
     
-    setLoading(true);
-    setError(null);
+    setIsLoading(true);
     
     try {
       const geocoder = new window.google.maps.Geocoder();
-      const latlng = { lat: coordinates.lat, lng: coordinates.lng };
       
-      geocoder.geocode({ location: latlng }, (results, status) => {
+      geocoder.geocode({ location: coords }, (results, status) => {
         if (status === 'OK' && results && results[0]) {
-          const formattedAddress = results[0].formatted_address;
-          setAddress(formattedAddress);
-          setAddressInput(formattedAddress);
+          setAddress(results[0].formatted_address);
           
-          // Callback with new coordinates and address
+          // Call the callback with new location
           if (onLocationSelect) {
-            onLocationSelect(coordinates, formattedAddress);
+            onLocationSelect(coords, results[0].formatted_address);
           }
         } else {
-          setError('Could not determine address for this location.');
+          console.error('Reverse geocode was not successful:', status);
         }
         
-        setLoading(false);
+        setIsLoading(false);
       });
     } catch (error) {
-      setError('Error finding address. Please try again.');
-      setLoading(false);
+      console.error('Error reverse geocoding:', error);
+      setIsLoading(false);
     }
   };
   
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    geocodeAddress();
+  // Handle search button click
+  const handleSearch = () => {
+    if (!searchAddress.trim()) return;
+    geocodeAddress(searchAddress);
   };
   
-  // No Google Maps API key
-  if (!isGoogleMapsAvailable) {
-    return (
-      <div className="space-y-4">
-        <Alert variant="destructive">
-          <AlertDescription>
-            Google Maps functionality is not available. Please provide a Google Maps API key.
-          </AlertDescription>
-        </Alert>
-        
-        <div className="space-y-2">
-          <Label htmlFor="address">Address</Label>
-          <Input 
-            id="address"
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value)}
-            placeholder="Enter a location"
-            disabled={readOnly}
-          />
-        </div>
-      </div>
-    );
-  }
+  // Handle search input keydown
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
   
   return (
-    <div className="space-y-4">
-      {/* Address input */}
-      {!readOnly && (
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <Label htmlFor="address">Address</Label>
-          <div className="flex space-x-2">
-            <Input 
-              id="address"
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value)}
-              placeholder="Enter an address to find on the map"
-              disabled={loading}
-            />
-            <button 
-              type="submit" 
-              className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 disabled:opacity-50"
-              disabled={loading || !addressInput.trim()}
-            >
-              {loading ? 'Finding...' : 'Find'}
-            </button>
-          </div>
-        </form>
-      )}
-      
-      {/* Display address if in read-only mode */}
-      {readOnly && address && (
-        <div className="text-neutral-700">
-          <strong>Location:</strong> {address}
-        </div>
-      )}
-      
-      {/* Error message */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      {/* Map container */}
-      <div 
-        ref={mapRef} 
-        className="rounded-md overflow-hidden border border-neutral-200" 
-        style={{ height, width: '100%' }}
-      >
-        {!googleMapsLoaded && (
-          <div className="h-full w-full flex items-center justify-center bg-neutral-100">
-            <div className="text-neutral-500">Loading map...</div>
+    <Card className="border overflow-hidden">
+      <CardContent className="p-0">
+        {/* Map container */}
+        <div
+          ref={mapRef}
+          className="w-full"
+          style={{ height }}
+        />
+        
+        {/* Search bar */}
+        {!readOnly && (
+          <div className="p-4 border-t">
+            <div className="flex space-x-2">
+              <Input
+                placeholder="Search for an address"
+                value={searchAddress}
+                onChange={(e) => setSearchAddress(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="flex-1"
+                disabled={isLoading || !isMapLoaded}
+              />
+              <Button 
+                onClick={handleSearch}
+                disabled={isLoading || !isMapLoaded || !searchAddress.trim()}
+              >
+                {isLoading ? 'Searching...' : 'Search'}
+              </Button>
+            </div>
+            
+            {address && (
+              <div className="mt-2 text-sm text-neutral-600">
+                <strong>Selected address:</strong> {address}
+              </div>
+            )}
+            
+            <div className="mt-1 text-xs text-neutral-500">
+              <strong>Coordinates:</strong> {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+            </div>
           </div>
         )}
-      </div>
-      
-      {/* Instructions */}
-      {!readOnly && (
-        <p className="text-sm text-neutral-500">
-          Click on the map or drag the marker to select a location.
-        </p>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

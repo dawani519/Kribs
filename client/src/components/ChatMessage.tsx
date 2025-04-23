@@ -1,8 +1,10 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
+import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { cn } from '../lib/utils';
 import { RootState } from '../redux/store';
 import { Message } from '../types';
-import { formatDistanceToNow } from 'date-fns';
 
 interface ChatMessageProps {
   message: Message;
@@ -14,79 +16,65 @@ interface ChatMessageProps {
  */
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, showAvatar = true }) => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const isCurrentUser = user?.id === message.senderId;
   
-  // Check if the message is from the current user
-  const isOwnMessage = user?.id === message.senderId;
-  
-  // Format the message time
+  // Format time
   const formattedTime = formatDistanceToNow(new Date(message.createdAt), { addSuffix: true });
   
+  // Get initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase();
+  };
+  
   return (
-    <div 
-      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3`}
-      data-testid="chat-message"
+    <div
+      className={cn(
+        "flex w-full mb-4 max-w-[80%]", 
+        isCurrentUser 
+          ? "ml-auto flex-row-reverse" 
+          : "mr-auto"
+      )}
     >
-      {!isOwnMessage && showAvatar && (
-        <div className="h-8 w-8 rounded-full bg-neutral-200 flex-shrink-0 mr-2 overflow-hidden">
-          {/* If we have user avatar, show it */}
-          {false ? (
-            <img 
-              src="" 
-              alt="User avatar"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary text-xs font-semibold">
-              {/* Placeholder initials */}
-              OU
-            </div>
-          )}
+      {/* Avatar - only show for other user's messages or if explicitly requested */}
+      {showAvatar && !isCurrentUser && (
+        <div className="flex-shrink-0 mr-2">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.avatar} alt="User" />
+            <AvatarFallback>{getInitials('User Name')}</AvatarFallback>
+          </Avatar>
         </div>
       )}
       
-      <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-        <div 
-          className={`px-3 py-2 rounded-lg 
-            ${isOwnMessage ? 
-              'bg-primary text-white rounded-tr-none' : 
-              'bg-neutral-100 text-neutral-800 rounded-tl-none'
-            } 
-            max-w-[75%] break-words`}
+      {/* Message bubble */}
+      <div className="flex flex-col">
+        <div
+          className={cn(
+            "p-3 rounded-lg",
+            isCurrentUser 
+              ? "bg-primary text-primary-foreground rounded-tr-none" 
+              : "bg-secondary text-secondary-foreground rounded-tl-none"
+          )}
         >
-          <p>{message.text}</p>
+          <p className="text-sm">{message.content}</p>
         </div>
         
-        <div className="flex items-center mt-1 text-xs text-neutral-500">
-          <span>{formattedTime}</span>
-          
-          {isOwnMessage && (
-            <span className="ml-2 flex items-center">
-              {message.isRead ? (
-                <i className="fas fa-check-double text-primary text-xs"></i>
-              ) : (
-                <i className="fas fa-check text-neutral-400 text-xs"></i>
-              )}
-            </span>
+        {/* Timestamp */}
+        <span 
+          className={cn(
+            "text-xs text-neutral-500 mt-1",
+            isCurrentUser ? "text-right" : "text-left"
           )}
-        </div>
+        >
+          {formattedTime}
+          {message.isRead && isCurrentUser && (
+            <span className="ml-1 text-primary">✓</span>
+          )}
+        </span>
       </div>
-      
-      {isOwnMessage && showAvatar && (
-        <div className="h-8 w-8 rounded-full bg-neutral-200 flex-shrink-0 ml-2 overflow-hidden">
-          {user?.avatarUrl ? (
-            <img 
-              src={user.avatarUrl} 
-              alt="User avatar"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary text-xs font-semibold">
-              {/* User initials from first and last name */}
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
