@@ -1,10 +1,23 @@
-import { ReactNode, useState } from "react";
-import { useLocation } from "wouter";
-import ListingCard from "./ListingCard";
-import { ROUTES } from "@/config/constants";
+import React, { ReactNode } from 'react';
+import ListingCard from './ListingCard';
+import { FaSearch } from 'react-icons/fa';
+import { RiFileListLine } from 'react-icons/ri';
 
 interface ListingGridProps {
-  listings: any[];
+  listings: Array<{
+    id: number;
+    title: string;
+    type: string;
+    city: string;
+    state: string;
+    price: number;
+    photos: string[];
+    bedrooms?: number;
+    bathrooms?: number;
+    squareMeters?: number;
+    featured?: boolean;
+    createdAt: string;
+  }>;
   columns?: 1 | 2 | 3;
   size?: "small" | "large" | "horizontal";
   loading?: boolean;
@@ -12,60 +25,82 @@ interface ListingGridProps {
   emptyIcon?: ReactNode;
 }
 
-const ListingGrid = ({
+/**
+ * ListingGrid component - displays a grid of property listings
+ */
+const ListingGrid: React.FC<ListingGridProps> = ({
   listings,
   columns = 2,
   size = "large",
   loading = false,
   emptyMessage = "No listings found",
-  emptyIcon = <i className="fas fa-home text-neutral-300 text-5xl mb-3"></i>,
+  emptyIcon,
 }: ListingGridProps) => {
-  const [, navigate] = useLocation();
-
-  const handleCardClick = (id: number) => {
-    navigate(ROUTES.LISTING_DETAIL.replace(':id', id.toString()));
-  };
-
-  // Loading skeleton
+  // Generate grid columns CSS class
+  const gridColumnsClass = 
+    columns === 1 
+      ? 'grid-cols-1' 
+      : columns === 3 
+        ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+        : 'grid-cols-1 sm:grid-cols-2';
+  
+  // Loading state
   if (loading) {
+    // Create skeleton cards
     return (
-      <div className={`grid grid-cols-${columns} gap-3`}>
+      <div className={`grid gap-4 ${gridColumnsClass}`}>
         {Array.from({ length: columns * 2 }).map((_, index) => (
-          <div key={index} className="animate-pulse">
-            <div className="bg-neutral-200 h-40 rounded-xl mb-2"></div>
-            <div className="bg-neutral-200 h-4 rounded-full mb-2"></div>
-            <div className="bg-neutral-200 h-3 rounded-full w-2/3 mb-2"></div>
-            <div className="flex justify-between">
-              <div className="bg-neutral-200 h-3 rounded-full w-1/4"></div>
-              <div className="bg-neutral-200 h-3 rounded-full w-1/4"></div>
+          <div 
+            key={index}
+            className="rounded-lg border border-neutral-200 overflow-hidden animate-pulse"
+          >
+            <div className={`${size === "small" ? "h-40" : "h-48"} bg-neutral-100`}></div>
+            <div className="p-4 space-y-3">
+              <div className="h-5 bg-neutral-100 rounded w-3/4"></div>
+              <div className="h-4 bg-neutral-100 rounded w-full"></div>
+              <div className="flex gap-3">
+                <div className="h-4 bg-neutral-100 rounded w-12"></div>
+                <div className="h-4 bg-neutral-100 rounded w-12"></div>
+              </div>
+              <div className="flex justify-between pt-2">
+                <div className="h-5 bg-neutral-100 rounded w-20"></div>
+                <div className="h-3 bg-neutral-100 rounded w-16"></div>
+              </div>
             </div>
           </div>
         ))}
       </div>
     );
   }
-
+  
   // Empty state
   if (!listings || listings.length === 0) {
     return (
-      <div className="text-center py-10">
-        {emptyIcon}
-        <p className="text-neutral-500">{emptyMessage}</p>
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4 text-neutral-400">
+          {emptyIcon || <FaSearch size={24} />}
+        </div>
+        <h3 className="text-lg font-medium text-neutral-800 mb-2">
+          {emptyMessage}
+        </h3>
+        <p className="text-neutral-500 max-w-md">
+          Try adjusting your search or filters to find what you're looking for.
+        </p>
       </div>
     );
   }
-
-  // Grid layout based on size and column count
+  
+  // Horizontal layout
   if (size === "horizontal") {
     return (
-      <div className="space-y-3">
-        {listings.map((listing) => (
+      <div className="space-y-4">
+        {listings.map(listing => (
           <ListingCard
             key={listing.id}
             id={listing.id}
             title={listing.title}
             type={listing.type}
-            address={listing.address}
+            address={`${listing.city}, ${listing.state}`}
             price={listing.price}
             photos={listing.photos}
             bedrooms={listing.bedrooms}
@@ -74,22 +109,22 @@ const ListingGrid = ({
             featured={listing.featured}
             createdAt={listing.createdAt}
             size="horizontal"
-            onCardClick={handleCardClick}
           />
         ))}
       </div>
     );
   }
-
+  
+  // Grid layout
   return (
-    <div className={`grid grid-cols-${columns} gap-3`}>
-      {listings.map((listing) => (
+    <div className={`grid gap-4 ${gridColumnsClass}`}>
+      {listings.map(listing => (
         <ListingCard
           key={listing.id}
           id={listing.id}
           title={listing.title}
           type={listing.type}
-          address={listing.address}
+          address={`${listing.city}, ${listing.state}`}
           price={listing.price}
           photos={listing.photos}
           bedrooms={listing.bedrooms}
@@ -98,7 +133,6 @@ const ListingGrid = ({
           featured={listing.featured}
           createdAt={listing.createdAt}
           size={size}
-          onCardClick={handleCardClick}
         />
       ))}
     </div>

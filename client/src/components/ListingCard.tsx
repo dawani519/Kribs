@@ -1,6 +1,10 @@
-import { formatPrice, formatRelativeTime } from "@/lib/utils";
-import { Link } from "wouter";
-import { ROUTES } from "@/config/constants";
+import React from 'react';
+import { useLocation } from 'wouter';
+import { formatDistanceToNow } from 'date-fns';
+import { FaBed, FaBath, FaSquare, FaStar } from 'react-icons/fa';
+import { IoBusiness } from 'react-icons/io5';
+import { Badge } from './ui/badge';
+import { Card, CardContent, CardFooter } from './ui/card';
 
 interface Amenity {
   id: number;
@@ -24,7 +28,10 @@ interface ListingCardProps {
   onCardClick?: (id: number) => void;
 }
 
-const ListingCard = ({
+/**
+ * ListingCard component - displays a property listing in a card format
+ */
+const ListingCard: React.FC<ListingCardProps> = ({
   id,
   title,
   type,
@@ -37,128 +44,163 @@ const ListingCard = ({
   featured = false,
   createdAt,
   size = "large",
-  onCardClick
+  onCardClick,
 }: ListingCardProps) => {
+  const [, navigate] = useLocation();
   
+  // Format listing time
+  const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+  
+  // Format price with commas for thousands
+  const formattedPrice = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  
+  // Handle card click
   const handleClick = () => {
     if (onCardClick) {
       onCardClick(id);
+    } else {
+      navigate(`/listings/${id}`);
     }
   };
   
-  // Default image if photos array is empty
-  const photoUrl = photos && photos.length > 0 
-    ? photos[0] 
-    : 'https://via.placeholder.com/500x300?text=No+Image';
-  
-  // Checking if it's a new listing (less than 3 days old)
-  const isNew = () => {
-    const now = new Date();
-    const listingDate = new Date(createdAt);
-    const diffTime = Math.abs(now.getTime() - listingDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 3;
-  };
-  
-  if (size === "small") {
+  // Render horizontal layout
+  if (size === "horizontal") {
     return (
-      <div 
+      <Card 
+        className="overflow-hidden border border-neutral-200 hover:border-primary/50 transition-colors cursor-pointer mb-4 flex h-40 flex-row"
         onClick={handleClick}
-        className="property-card bg-white rounded-xl overflow-hidden shadow-sm h-full cursor-pointer transition-transform hover:scale-[1.02]"
       >
-        <div className="relative">
-          <img src={photoUrl} alt={title} className="w-full h-28 object-cover" />
-          {isNew() && (
-            <div className="absolute top-2 left-2">
-              <span className="bg-warning text-white text-xs font-medium px-2 py-0.5 rounded">New</span>
+        <div 
+          className="relative h-full w-1/3 bg-neutral-100"
+          style={{ 
+            backgroundImage: photos && photos.length > 0 ? `url(${photos[0]})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        >
+          {photos && photos.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
+              <IoBusiness size={32} />
+            </div>
+          )}
+          
+          {featured && (
+            <Badge className="absolute top-2 left-2 bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
+              <FaStar size={12} />
+              <span>Featured</span>
+            </Badge>
+          )}
+          
+          <Badge className="absolute bottom-2 left-2 bg-black/60 text-white hover:bg-black/60">
+            {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
+          </Badge>
+        </div>
+        
+        <div className="flex-1 p-4 flex flex-col justify-between">
+          <div>
+            <h3 className="font-medium text-lg text-neutral-800 mb-1 line-clamp-1">{title}</h3>
+            <p className="text-neutral-500 text-sm mb-2 line-clamp-1">{address}</p>
+            
+            <div className="flex items-center gap-3 text-sm text-neutral-600">
+              {bedrooms !== undefined && (
+                <div className="flex items-center gap-1">
+                  <FaBed />
+                  <span>{bedrooms}</span>
+                </div>
+              )}
+              
+              {bathrooms !== undefined && (
+                <div className="flex items-center gap-1">
+                  <FaBath />
+                  <span>{bathrooms}</span>
+                </div>
+              )}
+              
+              {squareMeters !== undefined && (
+                <div className="flex items-center gap-1">
+                  <FaSquare />
+                  <span>{squareMeters} m²</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center mt-2">
+            <div className="text-primary font-semibold">₦{formattedPrice}</div>
+            <div className="text-xs text-neutral-400">{timeAgo}</div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  
+  // Render small or large card
+  return (
+    <Card 
+      className="overflow-hidden border border-neutral-200 hover:border-primary/50 transition-colors cursor-pointer"
+      onClick={handleClick}
+    >
+      <div 
+        className={`relative w-full ${size === "small" ? "h-40" : "h-48"} bg-neutral-100`}
+        style={{ 
+          backgroundImage: photos && photos.length > 0 ? `url(${photos[0]})` : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        {photos && photos.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
+            <IoBusiness size={32} />
+          </div>
+        )}
+        
+        {featured && (
+          <Badge className="absolute top-2 left-2 bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
+            <FaStar size={12} />
+            <span>Featured</span>
+          </Badge>
+        )}
+        
+        <Badge className="absolute bottom-2 left-2 bg-black/60 text-white hover:bg-black/60">
+          {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
+        </Badge>
+      </div>
+      
+      <CardContent className={`pt-4 ${size === "small" ? "pb-2 px-3" : "pb-3 px-4"}`}>
+        <h3 className={`font-medium ${size === "small" ? "text-base" : "text-lg"} text-neutral-800 mb-1 line-clamp-1`}>
+          {title}
+        </h3>
+        <p className="text-neutral-500 text-sm mb-2 line-clamp-1">{address}</p>
+        
+        <div className="flex items-center gap-3 text-sm text-neutral-600">
+          {bedrooms !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaBed />
+              <span>{bedrooms}</span>
+            </div>
+          )}
+          
+          {bathrooms !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaBath />
+              <span>{bathrooms}</span>
+            </div>
+          )}
+          
+          {squareMeters !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaSquare />
+              <span>{squareMeters} m²</span>
             </div>
           )}
         </div>
-        <div className="p-2">
-          <h3 className="font-medium text-sm">{title}</h3>
-          <p className="text-xs text-neutral-600 truncate">{address}</p>
-          <div className="flex justify-between items-center mt-1">
-            <span className="font-medium text-primary text-sm">{formatPrice(price)}</span>
-            <div className="flex space-x-2 text-xs text-neutral-600">
-              {bedrooms !== undefined && (
-                <span className="flex items-center"><i className="fas fa-bed mr-1"></i> {bedrooms}</span>
-              )}
-              {bathrooms !== undefined && (
-                <span className="flex items-center"><i className="fas fa-bath mr-1"></i> {bathrooms}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (size === "horizontal") {
-    return (
-      <div 
-        onClick={handleClick}
-        className="property-card bg-white rounded-xl overflow-hidden shadow-sm flex cursor-pointer transition-transform hover:scale-[1.02]"
-      >
-        <div className="w-24 h-24 flex-shrink-0">
-          <img src={photoUrl} alt={title} className="w-full h-full object-cover" />
-        </div>
-        <div className="p-2 flex-1">
-          <h3 className="font-medium text-sm">{title}</h3>
-          <p className="text-xs text-neutral-600 truncate">{address}</p>
-          <div className="flex justify-between items-center mt-1">
-            <span className="font-medium text-primary text-sm">{formatPrice(price)}</span>
-            <span className="text-xs text-neutral-600 flex items-center">
-              <i className="fas fa-map-marker-alt mr-1"></i> 1.2 km
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  // Default large card
-  return (
-    <div 
-      onClick={handleClick}
-      className="property-card bg-white rounded-xl overflow-hidden shadow-sm mb-4 cursor-pointer transition-transform hover:scale-[1.02]"
-    >
-      <div className="relative">
-        <img src={photoUrl} alt={title} className="w-full h-48 object-cover" />
-        {featured && (
-          <div className="absolute top-3 left-3">
-            <span className="bg-primary text-white text-xs font-medium px-2 py-1 rounded">Featured</span>
-          </div>
-        )}
-        <div className="absolute bottom-3 right-3 flex space-x-2">
-          <span className="bg-black bg-opacity-60 text-white text-xs font-medium px-2 py-1 rounded flex items-center">
-            <i className="fas fa-image mr-1"></i> {photos ? photos.length : 0}
-          </span>
-        </div>
-      </div>
-      <div className="p-3">
-        <div className="flex justify-between items-start">
-          <h3 className="font-semibold">{title}</h3>
-          <span className="font-semibold text-primary">{formatPrice(price)}</span>
-        </div>
-        <p className="text-sm text-neutral-600 mt-1">{address}</p>
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex space-x-3 text-xs text-neutral-600">
-            {bedrooms !== undefined && (
-              <span className="flex items-center"><i className="fas fa-bed mr-1"></i> {bedrooms}</span>
-            )}
-            {bathrooms !== undefined && (
-              <span className="flex items-center"><i className="fas fa-bath mr-1"></i> {bathrooms}</span>
-            )}
-            {squareMeters !== undefined && (
-              <span className="flex items-center"><i className="fas fa-vector-square mr-1"></i> {squareMeters}m²</span>
-            )}
-          </div>
-          <button className="text-xs bg-secondary bg-opacity-10 text-secondary font-medium px-2 py-1 rounded">
-            Contact
-          </button>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+      
+      <CardFooter className={`flex justify-between items-center pt-0 ${size === "small" ? "pb-3 px-3" : "pb-4 px-4"} border-t border-neutral-100`}>
+        <div className="text-primary font-semibold">₦{formattedPrice}</div>
+        <div className="text-xs text-neutral-400">{timeAgo}</div>
+      </CardFooter>
+    </Card>
   );
 };
 

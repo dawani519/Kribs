@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Provider } from "react-redux";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -26,6 +27,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 
 // Services and Config
 import { queryClient } from "./lib/queryClient";
+import { store } from "./redux/store";
 import { ROUTES } from "./config/constants";
 
 // Protected route component
@@ -105,16 +107,18 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <MainLayout>
-            <Router />
-          </MainLayout>
-          <Toaster />
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <MainLayout>
+              <Router />
+            </MainLayout>
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </Provider>
   );
 }
 
