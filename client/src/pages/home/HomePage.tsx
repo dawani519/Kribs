@@ -1,280 +1,151 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
-import { Building, Plus, MapPin, Search, Home } from 'lucide-react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../redux/store';
-import { Button } from '../../components/ui/button';
-import ListingGrid from '../../components/ListingGrid';
-import SearchFilterBar from '../../components/SearchFilterBar';
+import { AppDispatch, RootState } from '../../redux/store';
+import { fetchFeaturedListings } from '../../redux/listingSlice';
 import { ROUTES } from '../../config/constants';
-import { Listing } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { APP_NAME } from '../../config/constants';
+import ListingGrid from '../../components/ListingGrid';
+import { Button } from '../../components/ui/button';
+import { Skeleton } from '../../components/ui/skeleton';
 
 const HomePage: React.FC = () => {
   const [, navigate] = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { featuredListings, isLoading } = useSelector((state: RootState) => state.listings);
   
-  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
-  const [recentListings, setRecentListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Fetch featured and recent listings from Supabase if available
   useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        setLoading(true);
-        
-        let featuredData = [];
-        let recentData = [];
-        
-        // Check if the 'listings' table exists by trying to query it
-        const { error: checkError } = await supabase
-          .from('listings')
-          .select('count', { count: 'exact', head: true });
-        
-        // If the table exists, fetch the data
-        if (!checkError) {
-          // Fetch featured listings from Supabase
-          const { data: featured, error: featuredError } = await supabase
-            .from('listings')
-            .select('*')
-            .eq('featured', true)
-            .eq('approved', true)
-            .order('created_at', { ascending: false })
-            .limit(3);
-          
-          if (!featuredError) {
-            featuredData = featured || [];
-          }
-          
-          // Fetch recent listings from Supabase
-          const { data: recent, error: recentError } = await supabase
-            .from('listings')
-            .select('*')
-            .eq('approved', true)
-            .order('created_at', { ascending: false })
-            .limit(6);
-          
-          if (!recentError) {
-            recentData = recent || [];
-          }
-        } else {
-          console.log('The listings table does not exist yet. Showing empty state.');
-        }
-        
-        // Format the data for our components with all required fields
-        const formattedFeatured = featuredData.map(item => ({
-          id: item.id,
-          title: item.title,
-          description: item.description || '',
-          type: item.type,
-          category: item.category || '',
-          address: item.address,
-          city: item.city || '',
-          state: item.state || '',
-          country: item.country || 'Nigeria',
-          price: item.price,
-          lat: item.lat || 0,
-          lng: item.lng || 0,
-          photos: item.photos || [],
-          bedrooms: item.bedrooms,
-          bathrooms: item.bathrooms,
-          squareMeters: item.square_meters,
-          amenities: item.amenities || [],
-          ownerId: item.owner_id || 0,
-          featured: true,
-          approved: true,
-          createdAt: item.created_at || new Date().toISOString(),
-          updatedAt: item.updated_at || item.created_at || new Date().toISOString()
-        }));
-        
-        const formattedRecent = recentData.map(item => ({
-          id: item.id,
-          title: item.title,
-          description: item.description || '',
-          type: item.type,
-          category: item.category || '',
-          address: item.address,
-          city: item.city || '',
-          state: item.state || '',
-          country: item.country || 'Nigeria',
-          price: item.price,
-          lat: item.lat || 0,
-          lng: item.lng || 0,
-          photos: item.photos || [],
-          bedrooms: item.bedrooms,
-          bathrooms: item.bathrooms,
-          squareMeters: item.square_meters,
-          amenities: item.amenities || [],
-          ownerId: item.owner_id || 0,
-          featured: Boolean(item.featured),
-          approved: true,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at || item.created_at
-        }));
-        
-        setFeaturedListings(formattedFeatured);
-        setRecentListings(formattedRecent);
-      } catch (error) {
-        console.error('Error fetching listings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchListings();
-  }, []);
+    dispatch(fetchFeaturedListings());
+  }, [dispatch]);
   
-  // Handle search
-  const handleSearch = (query: string) => {
-    if (query) {
-      console.log('Searching for:', query);
-      navigate(`${ROUTES.LISTINGS}?q=${encodeURIComponent(query)}`);
-    }
+  const handleCreateListing = () => {
+    navigate(ROUTES.CREATE_LISTING);
   };
   
-  // Handle filter
-  const handleFilter = (filters: any) => {
-    console.log('Applied filters:', filters);
-    
-    // Build query string from filters
-    const params = new URLSearchParams();
-    
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        params.append(key, String(value));
-      }
-    });
-    
-    navigate(`${ROUTES.LISTINGS}?${params.toString()}`);
+  const handleSearch = () => {
+    navigate(ROUTES.SEARCH);
   };
   
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-6 space-y-8">
       {/* Hero Section */}
-      <div className="relative w-full h-[400px] rounded-lg overflow-hidden mb-8 flex items-center">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-black/40 z-10" />
-          <img 
-            src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&auto=format&fit=crop&q=80"
-            alt="Beautiful homes"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        
-        <div className="relative z-20 text-white max-w-xl mx-5 md:mx-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Find Your Perfect Home
-          </h1>
-          <p className="text-lg mb-6 text-white/90">
-            Discover thousands of properties for rent and sale all across Nigeria
+      <section className="bg-gradient-to-r from-primary/80 to-primary rounded-xl p-6 md:p-8 text-white">
+        <div className="max-w-xl">
+          <h1 className="text-3xl font-bold mb-4">Find Your Perfect Home</h1>
+          <p className="mb-6 opacity-90">
+            Browse thousands of properties for rent, sale, or short stay across Nigeria
           </p>
-          
-          {/* Search Bar */}
-          <div className="bg-white p-4 rounded-lg shadow-lg">
-            <SearchFilterBar 
-              onSearch={handleSearch}
-              onFilter={handleFilter}
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button variant="secondary" size="lg" onClick={handleSearch} className="flex-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Find Properties
+            </Button>
+            <Button variant="outline" size="lg" onClick={handleCreateListing} className="bg-white hover:bg-white/90 flex-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              List Your Property
+            </Button>
           </div>
         </div>
-      </div>
+      </section>
       
-      {/* List Your Property CTA */}
-      <div className="bg-primary/10 rounded-lg p-6 mb-8 flex flex-col sm:flex-row justify-between items-center">
-        <div className="mb-4 sm:mb-0">
-          <h2 className="text-xl font-semibold mb-2 flex items-center">
-            <Building className="mr-2 h-5 w-5" />
-            Own a property?
-          </h2>
-          <p className="text-neutral-600">
-            List your property on Kribs and connect with thousands of potential tenants and buyers
-          </p>
-        </div>
-        <Button 
-          size="lg" 
-          className="w-full sm:w-auto"
-          onClick={() => navigate(ROUTES.CREATE_LISTING)}
-        >
-          <Plus className="mr-2 h-4 w-4" /> List Your Property
-        </Button>
-      </div>
-      
-      {/* Featured Listings */}
-      <div className="mb-10">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Featured Properties</h2>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(`${ROUTES.LISTINGS}?featured=true`)}
-          >
-            View All
+      {/* Featured Properties */}
+      <section>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Featured Properties</h2>
+          <Button variant="link" onClick={handleSearch} className="text-primary">
+            View all
           </Button>
         </div>
         
-        <ListingGrid
-          listings={featuredListings}
-          loading={loading}
-          size="large"
-          columns={3}
-          emptyMessage="No featured properties available at the moment"
-          emptyIcon={<Building className="h-12 w-12" />}
-        />
-      </div>
-      
-      {/* Recent Listings */}
-      <div className="mb-10">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Recent Properties</h2>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(ROUTES.LISTINGS)}
-          >
-            View All
-          </Button>
-        </div>
-        
-        <ListingGrid
-          listings={recentListings}
-          loading={loading}
-          size="large"
-          columns={3}
-          emptyMessage="No recent properties available at the moment"
-          emptyIcon={<Home className="h-12 w-12" />}
-        />
-      </div>
-      
-      {/* Browse By Location */}
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold mb-6">Browse By Location</h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {['Lagos', 'Abuja', 'Port Harcourt', 'Ibadan'].map((city) => (
-            <div 
-              key={city}
-              className="relative h-40 rounded-lg overflow-hidden cursor-pointer group"
-              onClick={() => navigate(`${ROUTES.LISTINGS}?location=${city}`)}
-            >
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300 z-10" />
-              <img 
-                src={`https://source.unsplash.com/featured/?${city},city`}
-                alt={city}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center z-20">
-                <div className="text-center">
-                  <h3 className="text-white text-xl font-semibold mb-1">{city}</h3>
-                  <div className="flex items-center text-white/90 text-sm">
-                    <MapPin className="h-3 w-3 mr-1" />
-                    <span>Properties</span>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-lg overflow-hidden border border-neutral-200">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-4 space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <div className="flex gap-4">
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                  <div className="pt-2 flex justify-between">
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-4 w-16" />
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        ) : (
+          <ListingGrid 
+            listings={featuredListings} 
+            columns={3} 
+            size="large" 
+            emptyMessage="No featured properties available"
+          />
+        )}
+      </section>
+      
+      {/* Property Types */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Browse by Property Type</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {['Apartments', 'Houses', 'Land', 'Commercial'].map((type) => (
+            <div 
+              key={type} 
+              className="bg-white border border-neutral-200 rounded-lg p-4 text-center cursor-pointer hover:border-primary hover:shadow-md transition-all"
+              onClick={handleSearch}
+            >
+              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h3 className="font-medium">{type}</h3>
             </div>
           ))}
         </div>
-      </div>
+      </section>
+      
+      {/* How It Works */}
+      <section className="bg-neutral-50 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-6 text-center">How {APP_NAME} Works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl font-bold text-primary">1</span>
+            </div>
+            <h3 className="font-medium mb-2">Search Properties</h3>
+            <p className="text-neutral-600 text-sm">
+              Browse our extensive listings filtered by your preferences
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl font-bold text-primary">2</span>
+            </div>
+            <h3 className="font-medium mb-2">Contact Owners</h3>
+            <p className="text-neutral-600 text-sm">
+              Connect directly with property owners or agents via our platform
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl font-bold text-primary">3</span>
+            </div>
+            <h3 className="font-medium mb-2">List Your Property</h3>
+            <p className="text-neutral-600 text-sm">
+              Easily list your own property for rent, sale, or short stay
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

@@ -1,162 +1,218 @@
-// Core domain models
-
-export interface UserProfile {
-  id: number;
+// User Types
+export interface User {
+  id: number | string;
   email: string;
   username: string;
-  fullName: string;
-  phoneNumber?: string;
-  role: 'admin' | 'agent' | 'landlord' | 'user';
-  bio?: string;
-  avatar?: string;
-  isEmailVerified: boolean;
-  isPhoneVerified: boolean;
-  isIDVerified: boolean;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: 'user' | 'agent' | 'landlord' | 'admin';
+  companyName?: string;
+  licenseNumber?: string;
+  isVerified: boolean;
+  verificationMethod?: 'id' | 'license' | 'utility' | 'company';
+  verificationId?: number;
   createdAt: string;
-  updatedAt: string;
+  avatarUrl?: string;
 }
 
+export interface UserCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegistrationData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: 'user' | 'agent' | 'landlord';
+  companyName?: string;
+  licenseNumber?: string;
+}
+
+// Listing Types
 export interface Listing {
   id: number;
+  userId: number;
   title: string;
   description: string;
-  type: string;
-  category: string;
+  type: 'rent' | 'sale' | 'short_stay';
+  category: 'apartment' | 'house' | 'land' | 'commercial' | 'shared';
   price: number;
+  securityDeposit?: number;
   address: string;
   city: string;
   state: string;
   country: string;
-  lat: number;
-  lng: number;
+  latitude: number;
+  longitude: number;
   bedrooms?: number;
   bathrooms?: number;
   squareMeters?: number;
+  furnished: boolean;
+  petFriendly: boolean;
+  hasParking: boolean;
+  availableFrom: string;
   photos: string[];
-  amenities?: string[];
-  ownerId: number;
-  ownerName?: string;
-  ownerAvatar?: string;
-  featured: boolean;
   approved: boolean;
+  featured: boolean;
+  isFeatured: boolean;
+  contactPhone: string;
   createdAt: string;
   updatedAt: string;
-  saved?: boolean;
+  amenities?: Amenity[];
+  userName?: string;
 }
 
-export interface Conversation {
-  id: number;
-  listingId: number;
-  ownerId: number;
-  renterId: number;
-  ownerName?: string;
-  renterName?: string;
-  listingTitle?: string;
-  listingPhoto?: string;
-  lastMessageTime: string;
-  unreadCount?: number;
-  createdAt: string;
-}
-
-export interface Message {
-  id: number;
-  conversationId: number;
-  senderId: number;
-  content: string;
-  isRead: boolean;
-  createdAt: string;
-}
-
-export interface Payment {
-  id: number;
-  userId: number;
-  amount: number;
-  currency: string;
-  type: 'contact_fee' | 'listing_fee' | 'featured_fee';
-  status: 'pending' | 'successful' | 'failed';
-  reference: string;
-  listingId?: number;
-  transactionId?: string;
-  metadata?: Record<string, any>;
-  createdAt: string;
-}
-
-export interface Verification {
-  id: number;
-  userId: number;
-  type: 'email' | 'phone' | 'id' | 'address';
-  status: 'pending' | 'verified' | 'rejected';
-  documentUrl?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+export interface ListingFormData {
+  title: string;
+  description: string;
+  type: 'rent' | 'sale' | 'short_stay';
+  category: 'apartment' | 'house' | 'land' | 'commercial' | 'shared';
+  price: number;
+  securityDeposit?: number;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  squareMeters?: number;
+  furnished: boolean;
+  petFriendly: boolean;
+  hasParking: boolean;
+  availableFrom: Date;
+  photos: File[];
+  contactPhone: string;
+  amenities?: string[];
 }
 
 export interface Amenity {
   id: number;
   listingId: number;
   name: string;
-  icon?: React.ReactNode;
 }
 
+export interface ListingFilters {
+  type?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  furnished?: boolean;
+  location?: string;
+  radius?: number;
+}
+
+// Chat Types
+export interface Conversation {
+  id: number;
+  listingId: number;
+  ownerId: number;
+  renterId: number;
+  lastMessageTime: string;
+  createdAt: string;
+  listingTitle?: string;
+  ownerName?: string;
+  renterName?: string;
+  unreadCount?: number;
+}
+
+export interface Message {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  text: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface NewMessage {
+  conversationId: number;
+  text: string;
+}
+
+export interface NewConversation {
+  listingId: number;
+  ownerId: number;
+}
+
+// Payment Types
+export interface Payment {
+  id: number;
+  userId: number;
+  listingId?: number;
+  type: 'listing_fee' | 'contact_fee' | 'featured_fee';
+  amount: number;
+  status: 'pending' | 'completed' | 'failed';
+  reference: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentInitiation {
+  paymentId: number;
+  amount: number;
+  reference: string;
+  authorizationUrl: string;
+}
+
+// Verification Types
+export interface Verification {
+  id: number;
+  userId: number;
+  type: 'id' | 'license' | 'utility' | 'company';
+  documentUrl: string;
+  status: 'pending' | 'approved' | 'rejected';
+  comments?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VerificationFormData {
+  type: 'id' | 'license' | 'utility' | 'company';
+  document: File;
+}
+
+// Notification Types
 export interface Notification {
   id: number;
   userId: number;
-  type: string;
+  type: 'message' | 'listing_approved' | 'listing_rejected' | 'verification_approved' | 'verification_rejected' | 'payment_confirmed';
   title: string;
   message: string;
   isRead: boolean;
-  linkUrl?: string;
+  relatedId?: number;
   createdAt: string;
 }
 
-export interface ContactAccess {
-  id: number;
-  userId: number;
-  listingId: number;
-  hasAccess: boolean;
-  paymentId?: number;
-  createdAt: string;
-}
-
-// Additional frontend-only types
+// Redux State Types
 export interface AuthState {
-  user: UserProfile | null;
-  token: string | null;
-  isAuthenticated: boolean;
+  user: User | null;
   isLoading: boolean;
   error: string | null;
 }
 
 export interface ListingState {
   listings: Listing[];
+  userListings: Listing[];
   featuredListings: Listing[];
-  recentListings: Listing[];
-  savedListings: Listing[];
   currentListing: Listing | null;
   isLoading: boolean;
   error: string | null;
-  filters: ListingFilters;
-}
-
-export interface ListingFilters {
-  query?: string;
-  type?: string;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  bedrooms?: number;
-  location?: { lat: number; lng: number; radiusKm: number };
-  nearMe?: boolean;
 }
 
 export interface ChatState {
   conversations: Conversation[];
-  activeConversation: Conversation | null;
-  messages: Record<number, Message[]>;
+  selectedConversation: Conversation | null;
+  messages: Message[];
   isLoading: boolean;
   error: string | null;
-  unreadCount: number;
 }
 
 export interface PaymentState {
@@ -166,46 +222,23 @@ export interface PaymentState {
   error: string | null;
 }
 
-export interface NotificationState {
-  notifications: Notification[];
-  unreadCount: number;
+export interface VerificationState {
+  verifications: Verification[];
+  currentVerification: Verification | null;
   isLoading: boolean;
   error: string | null;
 }
 
-export interface CoordinatesType {
-  lat: number;
-  lng: number;
-}
-
-// Paystack related types
-export interface PaystackTransactionProps {
-  email: string;
-  amount: number;
-  metadata?: Record<string, any>;
-  onSuccess: (reference: any) => void;
-  onCancel: () => void;
-}
-
-export interface PaystackResponse {
-  reference: string;
-  status: string;
-  trans: string;
-  transaction: string;
-  message: string;
-  trxref: string;
-}
-
-// UI component prop types
-export interface ProtectedRouteProps {
-  component: React.ComponentType<any>;
-  [x: string]: any;
-}
-
-// Google Maps and Paystack related types
-declare global {
-  interface Window {
-    google: any;
-    PaystackPop: any;
-  }
+export interface AdminState {
+  users: User[];
+  pendingListings: Listing[];
+  pendingVerifications: Verification[];
+  statistics: {
+    totalUsers: number;
+    totalListings: number;
+    totalPayments: number;
+    revenue: number;
+  };
+  isLoading: boolean;
+  error: string | null;
 }

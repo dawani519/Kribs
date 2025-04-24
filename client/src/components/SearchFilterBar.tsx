@@ -1,32 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, Filter, MapPin, X } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Slider } from './ui/slider';
-import { Label } from './ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from './ui/popover';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetClose,
-} from './ui/sheet';
-import { Switch } from './ui/switch';
-import { PROPERTY_TYPES, PROPERTY_CATEGORIES } from '../config/constants';
-import { formatPrice } from '../lib/utils';
+import { useState, useRef, useEffect } from "react";
+import { PROPERTY_TYPES, PROPERTY_CATEGORIES } from "@/config/constants";
+import { cn } from "@/lib/utils";
 
 interface Filter {
   type?: string;
@@ -44,256 +18,322 @@ interface SearchFilterBarProps {
   initialFilters?: Filter;
 }
 
-/**
- * SearchFilterBar component - provides filtering and search for listings
- */
-const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
+const SearchFilterBar = ({
   onSearch,
   onFilter,
-  initialQuery = '',
-  initialFilters = {},
-}) => {
-  const [query, setQuery] = useState<string>(initialQuery);
-  const [showFilterSheet, setShowFilterSheet] = useState<boolean>(false);
-  const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
-  
-  // Filter states
+  initialQuery = "",
+  initialFilters = {}
+}: SearchFilterBarProps) => {
+  const [query, setQuery] = useState(initialQuery);
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filter>(initialFilters);
-  const [priceRange, setPriceRange] = useState<[number, number]>([
-    filters.minPrice || 0,
-    filters.maxPrice || 1000000
-  ]);
+  const [activeChips, setActiveChips] = useState<string[]>(
+    Object.entries(initialFilters)
+      .filter(([_, value]) => value !== undefined && value !== false)
+      .map(([key]) => key)
+  );
   
-  const searchRef = useRef<HTMLDivElement>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
   
-  // Handle clicks outside the search dropdown
+  // Close filters dropdown if clicked outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchFocused(false);
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+        setShowFilters(false);
       }
     };
     
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
   
-  // Handle search submit
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  };
+  
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch(query);
-    setIsSearchFocused(false);
   };
   
-  // Update filter state
-  const updateFilter = (key: keyof Filter, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  const toggleFilter = (filterKey: string, value: any) => {
+    // For boolean toggles like nearMe
+    if (typeof value === 'boolean') {
+      setFilters(prev => ({
+        ...prev,
+        [filterKey]: !prev[filterKey as keyof Filter]
+      }));
+      
+      // Toggle active chip
+      if (filters[filterKey as keyof Filter]) {
+        setActiveChips(prev => prev.filter(chip => chip !== filterKey));
+      } else {
+        setActiveChips(prev => [...prev, filterKey]);
+      }
+    } 
+    // For value filters like type, category
+    else {
+      setFilters(prev => ({
+        ...prev,
+        [filterKey]: value
+      }));
+      
+      if (value) {
+        setActiveChips(prev => {
+          if (!prev.includes(filterKey)) {
+            return [...prev, filterKey];
+          }
+          return prev;
+        });
+      } else {
+        setActiveChips(prev => prev.filter(chip => chip !== filterKey));
+      }
+    }
   };
   
-  // Apply filters
-  const applyFilters = () => {
-    // Update min/max price from slider
-    const updatedFilters = {
-      ...filters,
-      minPrice: priceRange[0],
-      maxPrice: priceRange[1]
-    };
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+    const { name, value, type } = e.target;
     
-    onFilter(updatedFilters);
-    setShowFilterSheet(false);
+    if (type === 'checkbox') {
+      const isChecked = (e.target as HTMLInputElement).checked;
+      toggleFilter(name, isChecked);
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        [name]: value === "" ? undefined : type === 'number' ? Number(value) : value
+      }));
+      
+      if (value) {
+        setActiveChips(prev => {
+          if (!prev.includes(name)) {
+            return [...prev, name];
+          }
+          return prev;
+        });
+      } else {
+        setActiveChips(prev => prev.filter(chip => chip !== name));
+      }
+    }
   };
   
-  // Reset filters
+  const applyFilters = () => {
+    onFilter(filters);
+    setShowFilters(false);
+  };
+  
   const resetFilters = () => {
     setFilters({});
-    setPriceRange([0, 1000000]);
+    setActiveChips([]);
+    onFilter({});
+    setShowFilters(false);
   };
   
-  // Format price for display
-  const formatPriceLabel = (value: number) => {
-    if (value >= 1000000) {
-      return `₦${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `₦${(value / 1000).toFixed(0)}K`;
+  const toggleNearMe = () => {
+    toggleFilter('nearMe', true);
+    setFilters(prev => ({
+      ...prev,
+      nearMe: !prev.nearMe
+    }));
+    
+    if (!filters.nearMe) {
+      onFilter({
+        ...filters,
+        nearMe: true
+      });
+    } else {
+      // Remove nearMe filter
+      const { nearMe, ...restFilters } = filters;
+      onFilter(restFilters);
     }
-    return `₦${value}`;
   };
-  
-  // Count active filters
-  const activeFilterCount = Object.values(filters).filter(val => val !== undefined && val !== '').length;
   
   return (
-    <div className="w-full mb-6">
-      <div className="flex items-center space-x-2">
-        {/* Search Bar */}
-        <div className="relative flex-1" ref={searchRef}>
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <Input
-              placeholder="Search locations, properties..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              className="pl-10 pr-4 py-2"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-500" />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                <X className="h-4 w-4 text-neutral-400" />
-              </button>
-            )}
-          </form>
-          
-          {/* Search suggestions dropdown */}
-          {isSearchFocused && query.length > 2 && (
-            <div className="absolute z-10 w-full bg-white shadow-lg rounded-md mt-1 border overflow-hidden">
-              <div className="p-2 text-sm text-neutral-500">
-                Type Enter to search...
-              </div>
-            </div>
-          )}
+    <div className="px-4 py-3 bg-white mb-3 relative">
+      <form onSubmit={handleSearch}>
+        <div className="relative">
+          <input 
+            type="text" 
+            placeholder="Search for location, property type..." 
+            className="w-full bg-neutral-100 text-neutral-800 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
+            value={query}
+            onChange={handleSearchInput}
+          />
+          <i className="fas fa-search text-neutral-400 absolute left-3 top-3"></i>
         </div>
-        
-        {/* Filter Button */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setShowFilterSheet(true)}
-          className="relative"
+      </form>
+      
+      <div className="mt-3 flex items-center space-x-2 overflow-x-auto pb-1">
+        <button 
+          className="filter-chip whitespace-nowrap bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full text-sm"
+          onClick={() => setShowFilters(!showFilters)}
         >
-          <Filter className="h-4 w-4" />
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              {activeFilterCount}
-            </span>
+          <i className="fas fa-filter mr-1 text-xs"></i> Filters
+        </button>
+        
+        <button 
+          className={cn(
+            "filter-chip whitespace-nowrap px-3 py-1 rounded-full text-sm",
+            filters.nearMe ? "bg-primary text-white" : "bg-neutral-100 text-neutral-700"
           )}
-        </Button>
+          onClick={toggleNearMe}
+        >
+          Near Me
+        </button>
+        
+        {activeChips.includes('type') && (
+          <button 
+            className="filter-chip whitespace-nowrap bg-primary text-white px-3 py-1 rounded-full text-sm"
+            onClick={() => toggleFilter('type', undefined)}
+          >
+            {filters.type}
+          </button>
+        )}
+        
+        {activeChips.includes('bedrooms') && (
+          <button 
+            className="filter-chip whitespace-nowrap bg-primary text-white px-3 py-1 rounded-full text-sm"
+            onClick={() => toggleFilter('bedrooms', undefined)}
+          >
+            {filters.bedrooms}+ Bedroom
+          </button>
+        )}
+        
+        {activeChips.includes('category') && (
+          <button 
+            className="filter-chip whitespace-nowrap bg-primary text-white px-3 py-1 rounded-full text-sm"
+            onClick={() => toggleFilter('category', undefined)}
+          >
+            {filters.category}
+          </button>
+        )}
+        
+        {(activeChips.includes('minPrice') || activeChips.includes('maxPrice')) && (
+          <button 
+            className="filter-chip whitespace-nowrap bg-primary text-white px-3 py-1 rounded-full text-sm"
+            onClick={() => {
+              toggleFilter('minPrice', undefined);
+              toggleFilter('maxPrice', undefined);
+            }}
+          >
+            Price: {filters.minPrice ? `₦${filters.minPrice.toLocaleString()}` : 'Any'} - 
+            {filters.maxPrice ? `₦${filters.maxPrice.toLocaleString()}` : 'Any'}
+          </button>
+        )}
       </div>
       
-      {/* Filter Sheet */}
-      <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Filter Properties</SheetTitle>
-          </SheetHeader>
-          
-          <div className="py-4 space-y-6">
-            {/* Property Type */}
-            <div className="space-y-2">
-              <Label>Property Type</Label>
-              <Select
-                value={filters.type || ''}
-                onValueChange={(value) => updateFilter('type', value || undefined)}
+      {/* Filter dropdown */}
+      {showFilters && (
+        <div 
+          ref={filtersRef}
+          className="absolute left-0 right-0 top-full bg-white shadow-lg rounded-b-lg z-20 p-4 border-t border-neutral-200"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Property Type</label>
+              <select 
+                name="type"
+                value={filters.type || ""}
+                onChange={handleFilterChange}
+                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Any type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Any type</SelectItem>
-                  {PROPERTY_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Any Type</option>
+                {PROPERTY_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
             </div>
             
-            {/* Property Category */}
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
-                value={filters.category || ''}
-                onValueChange={(value) => updateFilter('category', value || undefined)}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Category</label>
+              <select 
+                name="category"
+                value={filters.category || ""}
+                onChange={handleFilterChange}
+                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Any category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Any category</SelectItem>
-                  {PROPERTY_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Any Category</option>
+                {PROPERTY_CATEGORIES.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
             </div>
             
-            {/* Price Range */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label>Price Range</Label>
-                <div className="text-sm text-neutral-600">
-                  {formatPriceLabel(priceRange[0])} - {formatPriceLabel(priceRange[1])}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Price Range</label>
+              <div className="flex space-x-2">
+                <div className="flex-1">
+                  <input 
+                    type="number"
+                    name="minPrice"
+                    placeholder="Min Price"
+                    value={filters.minPrice || ""}
+                    onChange={handleFilterChange}
+                    className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="number"
+                    name="maxPrice"
+                    placeholder="Max Price"
+                    value={filters.maxPrice || ""}
+                    onChange={handleFilterChange}
+                    className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                 </div>
               </div>
-              
-              <Slider
-                defaultValue={[0, 1000000]}
-                value={priceRange}
-                onValueChange={setPriceRange}
-                min={0}
-                max={10000000}
-                step={100000}
-                className="my-6"
-              />
-              
-              <div className="flex justify-between text-xs text-neutral-500">
-                <span>₦0</span>
-                <span>₦10M+</span>
-              </div>
             </div>
             
-            {/* Bedrooms */}
-            <div className="space-y-2">
-              <Label>Bedrooms</Label>
-              <Select
-                value={filters.bedrooms?.toString() || ''}
-                onValueChange={(value) => updateFilter('bedrooms', value ? parseInt(value) : undefined)}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Bedrooms</label>
+              <select 
+                name="bedrooms"
+                value={filters.bedrooms || ""}
+                onChange={handleFilterChange}
+                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Any number" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Any number</SelectItem>
-                  <SelectItem value="1">1+</SelectItem>
-                  <SelectItem value="2">2+</SelectItem>
-                  <SelectItem value="3">3+</SelectItem>
-                  <SelectItem value="4">4+</SelectItem>
-                  <SelectItem value="5">5+</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="">Any Bedrooms</option>
+                {[1, 2, 3, 4, 5].map(num => (
+                  <option key={num} value={num}>{num}+ Bedrooms</option>
+                ))}
+              </select>
             </div>
             
-            {/* Near Me Switch */}
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Near Me</Label>
-                <p className="text-sm text-neutral-500">
-                  Show properties close to your location
-                </p>
-              </div>
-              <Switch
-                checked={filters.nearMe || false}
-                onCheckedChange={(checked) => updateFilter('nearMe', checked)}
+            <div className="flex items-center">
+              <input 
+                type="checkbox"
+                id="nearMe"
+                name="nearMe"
+                checked={!!filters.nearMe}
+                onChange={handleFilterChange}
+                className="rounded border-neutral-300 text-primary focus:ring-primary"
               />
+              <label htmlFor="nearMe" className="ml-2 text-sm text-neutral-700">
+                Near me
+              </label>
+            </div>
+            
+            <div className="flex justify-between pt-2">
+              <button 
+                type="button"
+                onClick={resetFilters}
+                className="text-neutral-600 text-sm font-medium"
+              >
+                Reset
+              </button>
+              <button 
+                type="button"
+                onClick={applyFilters}
+                className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-medium"
+              >
+                Apply Filters
+              </button>
             </div>
           </div>
-          
-          <SheetFooter className="sm:justify-between pt-2 border-t flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" onClick={resetFilters}>
-              Reset Filters
-            </Button>
-            <Button onClick={applyFilters}>
-              Apply Filters
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+        </div>
+      )}
     </div>
   );
 };

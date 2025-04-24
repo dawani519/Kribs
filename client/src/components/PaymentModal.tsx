@@ -1,17 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../redux/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../redux/store';
+import { initiateContactPayment, verifyPayment } from '../redux/paymentSlice';
+import { PAYSTACK_PUBLIC_KEY, CONTACT_FEE } from '../config/env';
 import { 
   Dialog, 
   DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
 } from './ui/dialog';
 import { Button } from './ui/button';
-import { Loader2 } from 'lucide-react';
-import { PAYMENT_AMOUNTS, handlePaystackPayment } from '../config/paystackConfig';
+
+interface PaystackWindow extends Window {
+  PaystackPop?: {
+    setup(config: PaystackConfig): { openIframe(): void };
+  };
+}
+
+interface PaystackConfig {
+  key: string;
+  email: string;
+  amount: number;
+  currency: string;
+  ref: string;
+  onClose: () => void;
+  callback: (response: PaystackResponse) => void;
+}
+
+interface PaystackResponse {
+  reference: string;
+  status: string;
+}
 
 interface PaymentModalProps {
   open: boolean;
@@ -28,115 +49,164 @@ const PaymentModal = ({ open, onClose, listingId, onSuccess }: PaymentModalProps
   const { user } = useSelector((state: RootState) => state.auth);
   const { pendingPayment, isLoading, error } = useSelector((state: RootState) => state.payment);
   
-  const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+  const [paymentInitiated, setPaymentInitiated] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle');
   
-  // Initiate payment when modal opens
+  // Reset state when modal opens
   useEffect(() => {
-    if (open && user && !pendingPayment) {
-      // In a real implementation, we would dispatch an action to create a payment record
-      console.log('Initiating payment for listing ID:', listingId);
+    if (open) {
+      setPaymentInitiated(false);
+      setVerificationStatus('idle');
     }
-  }, [open, user, listingId, pendingPayment, dispatch]);
+  }, [open]);
   
-  // Handle Paystack payment
-  const handlePayment = async () => {
-    if (!user?.email) {
-      console.error('User email is required for payment');
-      return;
-    }
-    
-    setPaymentProcessing(true);
+  // Initiate payment process
+  const handleInitiatePayment = async () => {
+    if (!user) return;
     
     try {
-      // Use Paystack to process the payment
-      await handlePaystackPayment({
-        email: user.email,
-        amount: PAYMENT_AMOUNTS.CONTACT_FEE,
-        onSuccess: (response) => {
-          console.log('Payment successful:', response);
+      // Create a payment record on server
+      const resultAction = await dispatch(initiateContactPayment(listingId)).unwrap();
+      setPaymentInitiated(true);
+      
+      // If Paystack is available, open payment modal
+      if (window && PAYSTACK_PUBLIC_KEY) {
+        const paystackWindow = window as PaystackWindow;
+        
+        if (paystackWindow.PaystackPop) {
+          const handler = paystackWindow.PaystackPop.setup({
+            key: PAYSTACK_PUBLIC_KEY,
+            email: user.email,
+            amount: CONTACT_FEE * 100, // convert to kobo (1 NGN = 100 kobo)
+            currency: 'NGN',
+            ref: resultAction.reference,
+            onClose: () => {
+              console.log('Payment closed');
+            },
+            callback: (response) => {
+              handlePaymentVerification(response.reference, resultAction.paymentId);
+            }
+          });
           
-          // In a real implementation, we would dispatch an action to verify the payment
-          // and grant access to the contact details
-          
-          setPaymentProcessing(false);
-          
-          if (onSuccess) {
-            onSuccess();
-          }
-          
-          onClose();
-        },
-        onCancel: () => {
-          console.log('Payment cancelled');
-          setPaymentProcessing(false);
-        },
-        metadata: {
-          listing_id: listingId,
-          payment_type: 'contact_fee',
-        },
-      });
+          handler.openIframe();
+        } else {
+          console.error('PaystackPop not available. Make sure Paystack script is loaded.');
+        }
+      } else {
+        // Simulate a successful payment for testing/demo purposes
+        // In production, this should not be used
+        setTimeout(() => {
+          handlePaymentVerification(resultAction.reference, resultAction.paymentId);
+        }, 2000);
+      }
     } catch (error) {
-      console.error('Payment error:', error);
-      setPaymentProcessing(false);
+      console.error('Failed to initiate payment:', error);
+    }
+  };
+  
+  // Verify payment after completion
+  const handlePaymentVerification = async (reference: string, paymentId: number) => {
+    setVerificationStatus('verifying');
+    
+    try {
+      await dispatch(verifyPayment({ reference, paymentId })).unwrap();
+      setVerificationStatus('success');
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Payment verification failed:', error);
+      setVerificationStatus('failed');
+    }
+  };
+  
+  // Close modal with confirmation if payment is in progress
+  const handleClose = () => {
+    if (paymentInitiated && verificationStatus !== 'success') {
+      const confirmed = window.confirm('Are you sure you want to cancel the payment process?');
+      if (confirmed) {
+        onClose();
+      }
+    } else {
+      onClose();
     }
   };
   
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Unlock Contact Information</DialogTitle>
+          <DialogTitle>Purchase Contact Access</DialogTitle>
           <DialogDescription>
-            Pay a small fee to access the landlord's contact information and communicate directly.
+            Pay a one-time fee to access contact details for this property.
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-4">
-          <div className="rounded-lg bg-neutral-50 p-4 mb-4">
-            <h4 className="font-semibold text-sm mb-2">Why pay for contacts?</h4>
-            <p className="text-sm text-neutral-600">
-              This small fee helps us verify serious buyers and renters, reducing spam for property owners.
-              You'll have permanent access to this contact after payment.
-            </p>
-          </div>
-          
-          <div className="flex justify-between items-center py-2 border-b">
-            <span className="text-sm font-medium">Contact Access Fee</span>
-            <span className="font-semibold">₦{PAYMENT_AMOUNTS.CONTACT_FEE.toLocaleString()}</span>
-          </div>
-          
-          <div className="mt-4 text-sm text-neutral-500">
-            Payment is securely processed by Paystack. Your payment information is not stored on our servers.
-          </div>
+          {verificationStatus === 'success' ? (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-green-600 mb-2">Payment Successful!</h3>
+              <p className="text-neutral-600">
+                You can now view the property owner's contact details.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                <div className="bg-neutral-50 p-4 rounded-md">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-600">Contact Access Fee:</span>
+                    <span className="font-medium">₦{CONTACT_FEE.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-2 text-sm text-neutral-500">
+                    This grants you access to the property owner's contact details, allowing you to inquire directly.
+                  </div>
+                </div>
+                
+                {error && (
+                  <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6">
+                {verificationStatus === 'verifying' ? (
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <div className="w-8 h-8 border-t-2 border-primary rounded-full animate-spin mb-2"></div>
+                    <p className="text-neutral-600 text-sm">Verifying payment...</p>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={handleInitiatePayment} 
+                    className="w-full" 
+                    disabled={isLoading || paymentInitiated}
+                  >
+                    {isLoading ? 'Processing...' : 'Pay Now (₦' + CONTACT_FEE.toLocaleString() + ')'}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </div>
         
-        {error && (
-          <div className="text-red-500 text-sm mb-4">
-            {error}
-          </div>
-        )}
-        
-        <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={onClose}
-            disabled={isLoading || paymentProcessing}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handlePayment}
-            disabled={isLoading || paymentProcessing}
-          >
-            {(isLoading || paymentProcessing) ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              `Pay ₦${PAYMENT_AMOUNTS.CONTACT_FEE.toLocaleString()}`
-            )}
-          </Button>
+        <DialogFooter className="sm:justify-end">
+          {verificationStatus === 'success' ? (
+            <Button variant="default" onClick={onClose}>
+              Close
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+              Cancel
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

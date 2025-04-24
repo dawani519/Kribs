@@ -1,26 +1,23 @@
-// Environment variables
+// Environment variables with fallbacks
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 export const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
 
-// Validate required environment variables
-export const validateEnv = (): boolean => {
-  const requiredVars = [
-    { name: 'SUPABASE_URL', value: SUPABASE_URL },
-    { name: 'SUPABASE_ANON_KEY', value: SUPABASE_ANON_KEY },
-    { name: 'GOOGLE_MAPS_API_KEY', value: GOOGLE_MAPS_API_KEY },
-    { name: 'PAYSTACK_PUBLIC_KEY', value: PAYSTACK_PUBLIC_KEY },
-  ];
+// Constants
+export const CONTACT_FEE = 1000; // ₦1,000
+export const LISTING_FEE = 2000; // ₦2,000
+export const FEATURED_LISTING_FEE = 5000; // ₦5,000
 
-  let valid = true;
+// Validation
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('Supabase credentials are missing. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.');
+}
 
-  requiredVars.forEach(({ name, value }) => {
-    if (!value) {
-      console.error(`Missing environment variable: ${name}`);
-      valid = false;
-    }
-  });
+if (!GOOGLE_MAPS_API_KEY) {
+  console.warn('Google Maps API key is missing. Map functionality will be limited.');
+}
 
-  return valid;
-};
+if (!PAYSTACK_PUBLIC_KEY) {
+  console.error('Paystack public key is missing. Make sure VITE_PAYSTACK_PUBLIC_KEY is set in your environment variables.');
+}

@@ -1,18 +1,16 @@
 import React from 'react';
 import { useLocation } from 'wouter';
-import { Card } from './ui/card';
+import { formatDistanceToNow } from 'date-fns';
+import { FaBed, FaBath, FaSquare, FaStar } from 'react-icons/fa';
+import { IoBusiness } from 'react-icons/io5';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { 
-  BedDouble, 
-  Bath, 
-  ArrowRightCircle, 
-  Star, 
-  MapPin, 
-  SquareIcon 
-} from 'lucide-react';
-import { formatPrice, formatDate } from '../lib/utils';
-import { cn } from '../lib/utils';
+import { Card, CardContent, CardFooter } from './ui/card';
+
+interface Amenity {
+  id: number;
+  listingId: number;
+  name: string;
+}
 
 interface ListingCardProps {
   id: number;
@@ -50,7 +48,13 @@ const ListingCard: React.FC<ListingCardProps> = ({
 }: ListingCardProps) => {
   const [, navigate] = useLocation();
   
-  // Handle click on the card
+  // Format listing time
+  const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+  
+  // Format price with commas for thousands
+  const formattedPrice = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  
+  // Handle card click
   const handleClick = () => {
     if (onCardClick) {
       onCardClick(id);
@@ -59,125 +63,143 @@ const ListingCard: React.FC<ListingCardProps> = ({
     }
   };
   
-  // Default image if no photos provided
-  const mainPhoto = photos && photos.length > 0 
-    ? photos[0] 
-    : 'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&auto=format&fit=crop';
-  
-  // Format the date
-  const formattedDate = formatDate(createdAt);
-  
-  return (
-    <Card 
-      className={cn(
-        "overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md",
-        size === "small" && "max-w-[250px]",
-        size === "large" && "max-w-[350px]",
-        size === "horizontal" && "max-w-full"
-      )}
-      onClick={handleClick}
-    >
-      <div className={cn(
-        "relative",
-        size === "horizontal" ? "flex" : "flex-col"
-      )}>
-        {/* Property image */}
-        <div className={cn(
-          "relative overflow-hidden",
-          size === "small" && "h-[150px]",
-          size === "large" && "h-[200px]",
-          size === "horizontal" && "h-[200px] w-[200px] flex-shrink-0"
-        )}>
-          <img 
-            src={mainPhoto}
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-          />
-          
-          {/* Featured badge */}
-          {featured && (
-            <div className="absolute top-2 left-2">
-              <Badge className="bg-yellow-400 text-black hover:bg-yellow-500">
-                <Star className="w-3 h-3 mr-1" /> Featured
-              </Badge>
+  // Render horizontal layout
+  if (size === "horizontal") {
+    return (
+      <Card 
+        className="overflow-hidden border border-neutral-200 hover:border-primary/50 transition-colors cursor-pointer mb-4 flex h-40 flex-row"
+        onClick={handleClick}
+      >
+        <div 
+          className="relative h-full w-1/3 bg-neutral-100"
+          style={{ 
+            backgroundImage: photos && photos.length > 0 ? `url(${photos[0]})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        >
+          {photos && photos.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
+              <IoBusiness size={32} />
             </div>
           )}
           
-          {/* Property type badge */}
-          <div className="absolute top-2 right-2">
-            <Badge variant="outline" className="bg-black/60 text-white border-none">
-              {type}
+          {featured && (
+            <Badge className="absolute top-2 left-2 bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
+              <FaStar size={12} />
+              <span>Featured</span>
             </Badge>
-          </div>
+          )}
+          
+          <Badge className="absolute bottom-2 left-2 bg-black/60 text-white hover:bg-black/60">
+            {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
+          </Badge>
         </div>
         
-        {/* Property details */}
-        <div className={cn(
-          "p-4 flex flex-col",
-          size === "horizontal" && "flex-1"
-        )}>
-          {/* Title */}
-          <h3 className={cn(
-            "font-semibold line-clamp-2 mb-1",
-            size === "small" ? "text-sm" : "text-base"
-          )}>
-            {title}
-          </h3>
-          
-          {/* Location */}
-          <div className="flex items-center text-neutral-500 mb-2">
-            <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-            <span className={cn(
-              "truncate",
-              size === "small" ? "text-xs" : "text-sm"
-            )}>
-              {address}
-            </span>
-          </div>
-          
-          {/* Price */}
-          <div className="text-primary font-bold mb-3">
-            {formatPrice(price)}
-            <span className="text-neutral-500 font-normal text-sm"> / month</span>
-          </div>
-          
-          {/* Features */}
-          <div className={cn(
-            "flex items-center space-x-3 text-sm text-neutral-600 mt-auto",
-            size === "small" && "text-xs"
-          )}>
-            {bedrooms !== undefined && (
-              <div className="flex items-center">
-                <BedDouble className="w-4 h-4 mr-1 text-neutral-400" />
-                <span>{bedrooms}</span>
-              </div>
-            )}
+        <div className="flex-1 p-4 flex flex-col justify-between">
+          <div>
+            <h3 className="font-medium text-lg text-neutral-800 mb-1 line-clamp-1">{title}</h3>
+            <p className="text-neutral-500 text-sm mb-2 line-clamp-1">{address}</p>
             
-            {bathrooms !== undefined && (
-              <div className="flex items-center">
-                <Bath className="w-4 h-4 mr-1 text-neutral-400" />
-                <span>{bathrooms}</span>
-              </div>
-            )}
-            
-            {squareMeters !== undefined && (
-              <div className="flex items-center">
-                <SquareIcon className="w-4 h-4 mr-1 text-neutral-400" />
-                <span>{squareMeters} m²</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3 text-sm text-neutral-600">
+              {bedrooms !== undefined && (
+                <div className="flex items-center gap-1">
+                  <FaBed />
+                  <span>{bedrooms}</span>
+                </div>
+              )}
+              
+              {bathrooms !== undefined && (
+                <div className="flex items-center gap-1">
+                  <FaBath />
+                  <span>{bathrooms}</span>
+                </div>
+              )}
+              
+              {squareMeters !== undefined && (
+                <div className="flex items-center gap-1">
+                  <FaSquare />
+                  <span>{squareMeters} m²</span>
+                </div>
+              )}
+            </div>
           </div>
           
-          {/* View button (shown only on horizontal cards or on hover) */}
-          {size === "horizontal" && (
-            <div className="mt-4">
-              <Button size="sm" className="w-full sm:w-auto">
-                View Details <ArrowRightCircle className="ml-2 h-4 w-4" />
-              </Button>
+          <div className="flex justify-between items-center mt-2">
+            <div className="text-primary font-semibold">₦{formattedPrice}</div>
+            <div className="text-xs text-neutral-400">{timeAgo}</div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  
+  // Render small or large card
+  return (
+    <Card 
+      className="overflow-hidden border border-neutral-200 hover:border-primary/50 transition-colors cursor-pointer"
+      onClick={handleClick}
+    >
+      <div 
+        className={`relative w-full ${size === "small" ? "h-40" : "h-48"} bg-neutral-100`}
+        style={{ 
+          backgroundImage: photos && photos.length > 0 ? `url(${photos[0]})` : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        {photos && photos.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
+            <IoBusiness size={32} />
+          </div>
+        )}
+        
+        {featured && (
+          <Badge className="absolute top-2 left-2 bg-yellow-500 hover:bg-yellow-500 text-white flex items-center gap-1">
+            <FaStar size={12} />
+            <span>Featured</span>
+          </Badge>
+        )}
+        
+        <Badge className="absolute bottom-2 left-2 bg-black/60 text-white hover:bg-black/60">
+          {type === 'rent' ? 'For Rent' : type === 'sale' ? 'For Sale' : 'Short Stay'}
+        </Badge>
+      </div>
+      
+      <CardContent className={`pt-4 ${size === "small" ? "pb-2 px-3" : "pb-3 px-4"}`}>
+        <h3 className={`font-medium ${size === "small" ? "text-base" : "text-lg"} text-neutral-800 mb-1 line-clamp-1`}>
+          {title}
+        </h3>
+        <p className="text-neutral-500 text-sm mb-2 line-clamp-1">{address}</p>
+        
+        <div className="flex items-center gap-3 text-sm text-neutral-600">
+          {bedrooms !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaBed />
+              <span>{bedrooms}</span>
+            </div>
+          )}
+          
+          {bathrooms !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaBath />
+              <span>{bathrooms}</span>
+            </div>
+          )}
+          
+          {squareMeters !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaSquare />
+              <span>{squareMeters} m²</span>
             </div>
           )}
         </div>
-      </div>
+      </CardContent>
+      
+      <CardFooter className={`flex justify-between items-center pt-0 ${size === "small" ? "pb-3 px-3" : "pb-4 px-4"} border-t border-neutral-100`}>
+        <div className="text-primary font-semibold">₦{formattedPrice}</div>
+        <div className="text-xs text-neutral-400">{timeAgo}</div>
+      </CardFooter>
     </Card>
   );
 };

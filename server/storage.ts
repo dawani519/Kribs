@@ -1,26 +1,32 @@
-import { eq, and, desc, or, gte, lte } from "drizzle-orm";
-import { db } from "./db";
-import * as schema from "../shared/schema";
-import { calculateDistance } from "../client/src/lib/utils";
+import { 
+  users, type User, type InsertUser,
+  verifications, type Verification, type InsertVerification,
+  listings, type Listing, type InsertListing,
+  amenities, type Amenity, type InsertAmenity, 
+  conversations, type Conversation, type InsertConversation,
+  messages, type Message, type InsertMessage,
+  payments, type Payment, type InsertPayment,
+  contactAccess, type ContactAccess, type InsertContactAccess,
+  notifications, type Notification, type InsertNotification
+} from "@shared/schema";
 
-// Storage interface for CRUD operations
 export interface IStorage {
   // User methods
-  getUser(id: number): Promise<schema.User | undefined>;
-  getUserByUsername(username: string): Promise<schema.User | undefined>;
-  getUserByEmail(email: string): Promise<schema.User | undefined>;
-  createUser(user: schema.InsertUser): Promise<schema.User>;
-  updateUser(id: number, user: Partial<schema.User>): Promise<schema.User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   
   // Verification methods
-  createVerification(verification: schema.InsertVerification): Promise<schema.Verification>;
-  getVerification(id: number): Promise<schema.Verification | undefined>;
-  getVerificationsByUserId(userId: number): Promise<schema.Verification[]>;
-  updateVerification(id: number, verification: Partial<schema.Verification>): Promise<schema.Verification | undefined>;
+  createVerification(verification: InsertVerification): Promise<Verification>;
+  getVerification(id: number): Promise<Verification | undefined>;
+  getVerificationsByUserId(userId: number): Promise<Verification[]>;
+  updateVerification(id: number, verification: Partial<Verification>): Promise<Verification | undefined>;
   
   // Listing methods
-  createListing(listing: schema.InsertListing): Promise<schema.Listing>;
-  getListing(id: number): Promise<schema.Listing | undefined>;
+  createListing(listing: InsertListing): Promise<Listing>;
+  getListing(id: number): Promise<Listing | undefined>;
   getListings(params?: { 
     userId?: number, 
     type?: string, 
@@ -31,108 +37,189 @@ export interface IStorage {
     featured?: boolean,
     limit?: number, 
     offset?: number 
-  }): Promise<schema.Listing[]>;
-  getFeaturedListings(limit?: number): Promise<schema.Listing[]>;
-  getRecentListings(limit?: number): Promise<schema.Listing[]>;
-  getNearbyListings(lat: number, lng: number, radiusKm: number, limit?: number): Promise<schema.Listing[]>;
-  updateListing(id: number, listing: Partial<schema.Listing>): Promise<schema.Listing | undefined>;
+  }): Promise<Listing[]>;
+  getFeaturedListings(limit?: number): Promise<Listing[]>;
+  getRecentListings(limit?: number): Promise<Listing[]>;
+  getNearbyListings(lat: number, lng: number, radiusKm: number, limit?: number): Promise<Listing[]>;
+  updateListing(id: number, listing: Partial<Listing>): Promise<Listing | undefined>;
   deleteListing(id: number): Promise<boolean>;
   
   // Amenity methods
-  createAmenity(amenity: schema.InsertAmenity): Promise<schema.Amenity>;
-  getAmenitiesByListingId(listingId: number): Promise<schema.Amenity[]>;
+  createAmenity(amenity: InsertAmenity): Promise<Amenity>;
+  getAmenitiesByListingId(listingId: number): Promise<Amenity[]>;
   
   // Conversation methods
-  createConversation(conversation: schema.InsertConversation): Promise<schema.Conversation>;
-  getConversation(id: number): Promise<schema.Conversation | undefined>;
-  getConversationByParticipants(renterId: number, ownerId: number, listingId: number): Promise<schema.Conversation | undefined>;
-  getConversationsByUserId(userId: number): Promise<schema.Conversation[]>;
-  updateConversationLastMessageTime(id: number): Promise<schema.Conversation | undefined>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  getConversation(id: number): Promise<Conversation | undefined>;
+  getConversationByParticipants(renterId: number, ownerId: number, listingId: number): Promise<Conversation | undefined>;
+  getConversationsByUserId(userId: number): Promise<Conversation[]>;
+  updateConversationLastMessageTime(id: number): Promise<Conversation | undefined>;
   
   // Message methods
-  createMessage(message: schema.InsertMessage): Promise<schema.Message>;
-  getMessagesByConversationId(conversationId: number, limit?: number, offset?: number): Promise<schema.Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  getMessagesByConversationId(conversationId: number, limit?: number, offset?: number): Promise<Message[]>;
   markMessagesAsRead(conversationId: number, userId: number): Promise<boolean>;
   
   // Payment methods
-  createPayment(payment: schema.InsertPayment): Promise<schema.Payment>;
-  getPayment(id: number): Promise<schema.Payment | undefined>;
-  getPaymentByReference(reference: string): Promise<schema.Payment | undefined>;
-  updatePayment(id: number, payment: Partial<schema.Payment>): Promise<schema.Payment | undefined>;
-  getPaymentsByUserId(userId: number): Promise<schema.Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPayment(id: number): Promise<Payment | undefined>;
+  getPaymentByReference(reference: string): Promise<Payment | undefined>;
+  updatePayment(id: number, payment: Partial<Payment>): Promise<Payment | undefined>;
+  getPaymentsByUserId(userId: number): Promise<Payment[]>;
   
   // Contact access methods
-  createContactAccess(access: schema.InsertContactAccess): Promise<schema.ContactAccess>;
-  getContactAccess(userId: number, listingId: number): Promise<schema.ContactAccess | undefined>;
-  grantContactAccess(userId: number, listingId: number, paymentId?: number): Promise<schema.ContactAccess>;
-  grantContactAccessByAdmin(userId: number, listingId: number): Promise<schema.ContactAccess>;
+  createContactAccess(access: InsertContactAccess): Promise<ContactAccess>;
+  getContactAccess(userId: number, listingId: number): Promise<ContactAccess | undefined>;
+  grantContactAccess(userId: number, listingId: number, paymentId?: number): Promise<ContactAccess>;
+  grantContactAccessByAdmin(userId: number, listingId: number): Promise<ContactAccess>;
   
   // Notification methods
-  createNotification(notification: schema.InsertNotification): Promise<schema.Notification>;
-  getNotificationsByUserId(userId: number, unreadOnly?: boolean): Promise<schema.Notification[]>;
-  markNotificationAsRead(id: number): Promise<schema.Notification | undefined>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotificationsByUserId(userId: number, unreadOnly?: boolean): Promise<Notification[]>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: number): Promise<boolean>;
 }
 
-// Database storage implementation
-export class DatabaseStorage implements IStorage {
+export class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private verifications: Map<number, Verification>;
+  private listings: Map<number, Listing>;
+  private amenities: Map<number, Amenity>;
+  private conversations: Map<number, Conversation>;
+  private messages: Map<number, Message>;
+  private payments: Map<number, Payment>;
+  private contactAccesses: Map<number, ContactAccess>;
+  private notifications: Map<number, Notification>;
+  
+  // Counters for IDs
+  private userIdCounter: number;
+  private verificationIdCounter: number;
+  private listingIdCounter: number;
+  private amenityIdCounter: number;
+  private conversationIdCounter: number;
+  private messageIdCounter: number;
+  private paymentIdCounter: number;
+  private contactAccessIdCounter: number;
+  private notificationIdCounter: number;
+
+  constructor() {
+    this.users = new Map();
+    this.verifications = new Map();
+    this.listings = new Map();
+    this.amenities = new Map();
+    this.conversations = new Map();
+    this.messages = new Map();
+    this.payments = new Map();
+    this.contactAccesses = new Map();
+    this.notifications = new Map();
+    
+    this.userIdCounter = 1;
+    this.verificationIdCounter = 1;
+    this.listingIdCounter = 1;
+    this.amenityIdCounter = 1;
+    this.conversationIdCounter = 1;
+    this.messageIdCounter = 1;
+    this.paymentIdCounter = 1;
+    this.contactAccessIdCounter = 1;
+    this.notificationIdCounter = 1;
+  }
+
   // User methods
-  async getUser(id: number): Promise<schema.User | undefined> {
-    const users = await db.select().from(schema.users).where(eq(schema.users.id, id));
-    return users[0];
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
   }
-  
-  async getUserByUsername(username: string): Promise<schema.User | undefined> {
-    const users = await db.select().from(schema.users).where(eq(schema.users.username, username));
-    return users[0];
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.username === username,
+    );
   }
-  
-  async getUserByEmail(email: string): Promise<schema.User | undefined> {
-    const users = await db.select().from(schema.users).where(eq(schema.users.email, email));
-    return users[0];
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
   }
-  
-  async createUser(user: schema.InsertUser): Promise<schema.User> {
-    const created = await db.insert(schema.users).values(user).returning();
-    return created[0];
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.userIdCounter++;
+    const now = new Date();
+    const user: User = { 
+      ...insertUser, 
+      id,
+      isVerified: false,
+      createdAt: now 
+    };
+    this.users.set(id, user);
+    return user;
   }
-  
-  async updateUser(id: number, user: Partial<schema.User>): Promise<schema.User | undefined> {
-    const updated = await db.update(schema.users).set(user).where(eq(schema.users.id, id)).returning();
-    return updated[0];
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { ...existingUser, ...userData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
-  
+
   // Verification methods
-  async createVerification(verification: schema.InsertVerification): Promise<schema.Verification> {
-    const created = await db.insert(schema.verifications).values(verification).returning();
-    return created[0];
+  async createVerification(insertVerification: InsertVerification): Promise<Verification> {
+    const id = this.verificationIdCounter++;
+    const now = new Date();
+    const verification: Verification = {
+      ...insertVerification,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.verifications.set(id, verification);
+    return verification;
   }
-  
-  async getVerification(id: number): Promise<schema.Verification | undefined> {
-    const verifications = await db.select().from(schema.verifications).where(eq(schema.verifications.id, id));
-    return verifications[0];
+
+  async getVerification(id: number): Promise<Verification | undefined> {
+    return this.verifications.get(id);
   }
-  
-  async getVerificationsByUserId(userId: number): Promise<schema.Verification[]> {
-    return await db.select().from(schema.verifications).where(eq(schema.verifications.userId, userId));
+
+  async getVerificationsByUserId(userId: number): Promise<Verification[]> {
+    return Array.from(this.verifications.values()).filter(
+      (verification) => verification.userId === userId,
+    );
   }
-  
-  async updateVerification(id: number, verificationData: Partial<schema.Verification>): Promise<schema.Verification | undefined> {
-    const updated = await db.update(schema.verifications).set(verificationData).where(eq(schema.verifications.id, id)).returning();
-    return updated[0];
+
+  async updateVerification(id: number, verificationData: Partial<Verification>): Promise<Verification | undefined> {
+    const existingVerification = this.verifications.get(id);
+    if (!existingVerification) return undefined;
+    
+    const updatedVerification = { 
+      ...existingVerification, 
+      ...verificationData,
+      updatedAt: new Date()
+    };
+    this.verifications.set(id, updatedVerification);
+    return updatedVerification;
   }
-  
+
   // Listing methods
-  async createListing(listing: schema.InsertListing): Promise<schema.Listing> {
-    const created = await db.insert(schema.listings).values(listing).returning();
-    return created[0];
+  async createListing(insertListing: InsertListing): Promise<Listing> {
+    const id = this.listingIdCounter++;
+    const now = new Date();
+    const listing: Listing = {
+      ...insertListing,
+      id,
+      approved: false,
+      featured: false,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.listings.set(id, listing);
+    return listing;
   }
-  
-  async getListing(id: number): Promise<schema.Listing | undefined> {
-    const listings = await db.select().from(schema.listings).where(eq(schema.listings.id, id));
-    return listings[0];
+
+  async getListing(id: number): Promise<Listing | undefined> {
+    return this.listings.get(id);
   }
-  
+
   async getListings(params: { 
     userId?: number, 
     type?: string, 
@@ -143,312 +230,360 @@ export class DatabaseStorage implements IStorage {
     featured?: boolean,
     limit?: number, 
     offset?: number 
-  } = {}): Promise<schema.Listing[]> {
-    const query = db.select().from(schema.listings);
+  } = {}): Promise<Listing[]> {
+    let listings = Array.from(this.listings.values());
     
-    if (params.userId) {
-      query.where(eq(schema.listings.userId, params.userId));
+    if (params.userId !== undefined) {
+      listings = listings.filter(listing => listing.userId === params.userId);
     }
     
-    if (params.type) {
-      query.where(eq(schema.listings.type, params.type));
+    if (params.type !== undefined) {
+      listings = listings.filter(listing => listing.type === params.type);
     }
     
-    if (params.category) {
-      query.where(eq(schema.listings.category, params.category));
+    if (params.category !== undefined) {
+      listings = listings.filter(listing => listing.category === params.category);
     }
     
-    if (params.minPrice) {
-      query.where(gte(schema.listings.price, params.minPrice));
+    if (params.minPrice !== undefined) {
+      listings = listings.filter(listing => listing.price >= params.minPrice);
     }
     
-    if (params.maxPrice) {
-      query.where(lte(schema.listings.price, params.maxPrice));
+    if (params.maxPrice !== undefined) {
+      listings = listings.filter(listing => listing.price <= params.maxPrice);
     }
     
     if (params.approved !== undefined) {
-      query.where(eq(schema.listings.approved, params.approved));
+      listings = listings.filter(listing => listing.approved === params.approved);
     }
     
     if (params.featured !== undefined) {
-      query.where(eq(schema.listings.featured, params.featured));
+      listings = listings.filter(listing => listing.featured === params.featured);
     }
     
-    query.orderBy(desc(schema.listings.createdAt));
-    
-    if (params.limit) {
-      query.limit(params.limit);
-    }
-    
-    if (params.offset) {
-      query.offset(params.offset);
-    }
-    
-    return await query;
-  }
-  
-  async getFeaturedListings(limit = 5): Promise<schema.Listing[]> {
-    return await db.select()
-      .from(schema.listings)
-      .where(and(
-        eq(schema.listings.featured, true),
-        eq(schema.listings.approved, true)
-      ))
-      .orderBy(desc(schema.listings.createdAt))
-      .limit(limit);
-  }
-  
-  async getRecentListings(limit = 10): Promise<schema.Listing[]> {
-    return await db.select()
-      .from(schema.listings)
-      .where(eq(schema.listings.approved, true))
-      .orderBy(desc(schema.listings.createdAt))
-      .limit(limit);
-  }
-  
-  async getNearbyListings(lat: number, lng: number, radiusKm = 5, limit = 10): Promise<schema.Listing[]> {
-    // Get all approved listings
-    const listings = await db.select()
-      .from(schema.listings)
-      .where(eq(schema.listings.approved, true));
-    
-    // Filter by distance (this would be better done in the database with a spatial query)
-    const nearbyListings = listings.filter(listing => {
-      const distance = calculateDistance(lat, lng, listing.latitude, listing.longitude);
-      return distance <= radiusKm;
-    });
-    
-    // Sort by creation date
-    nearbyListings.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-    
-    // Return limited results
-    return nearbyListings.slice(0, limit);
-  }
-  
-  async updateListing(id: number, listingData: Partial<schema.Listing>): Promise<schema.Listing | undefined> {
-    const updated = await db.update(schema.listings).set(listingData).where(eq(schema.listings.id, id)).returning();
-    return updated[0];
-  }
-  
-  async deleteListing(id: number): Promise<boolean> {
-    const deleted = await db.delete(schema.listings).where(eq(schema.listings.id, id)).returning();
-    return deleted.length > 0;
-  }
-  
-  // Amenity methods
-  async createAmenity(amenity: schema.InsertAmenity): Promise<schema.Amenity> {
-    const created = await db.insert(schema.amenities).values(amenity).returning();
-    return created[0];
-  }
-  
-  async getAmenitiesByListingId(listingId: number): Promise<schema.Amenity[]> {
-    return await db.select().from(schema.amenities).where(eq(schema.amenities.listingId, listingId));
-  }
-  
-  // Conversation methods
-  async createConversation(conversation: schema.InsertConversation): Promise<schema.Conversation> {
-    const created = await db.insert(schema.conversations).values(conversation).returning();
-    return created[0];
-  }
-  
-  async getConversation(id: number): Promise<schema.Conversation | undefined> {
-    const conversations = await db.select().from(schema.conversations).where(eq(schema.conversations.id, id));
-    return conversations[0];
-  }
-  
-  async getConversationByParticipants(renterId: number, ownerId: number, listingId: number): Promise<schema.Conversation | undefined> {
-    const conversations = await db.select().from(schema.conversations).where(
-      and(
-        eq(schema.conversations.renterId, renterId),
-        eq(schema.conversations.ownerId, ownerId),
-        eq(schema.conversations.listingId, listingId)
-      )
+    // Sort by creation date (newest first)
+    listings = listings.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    return conversations[0];
-  }
-  
-  async getConversationsByUserId(userId: number): Promise<schema.Conversation[]> {
-    return await db.select().from(schema.conversations).where(
-      or(
-        eq(schema.conversations.renterId, userId),
-        eq(schema.conversations.ownerId, userId)
-      )
-    ).orderBy(desc(schema.conversations.lastMessageAt));
-  }
-  
-  async updateConversationLastMessageTime(id: number): Promise<schema.Conversation | undefined> {
-    const updated = await db.update(schema.conversations)
-      .set({ lastMessageAt: new Date() })
-      .where(eq(schema.conversations.id, id))
-      .returning();
-    return updated[0];
-  }
-  
-  // Message methods
-  async createMessage(message: schema.InsertMessage): Promise<schema.Message> {
-    const created = await db.insert(schema.messages).values(message).returning();
     
-    // Update conversation last message time
+    // Apply offset and limit
+    const offset = params.offset || 0;
+    const limit = params.limit || listings.length;
+    
+    return listings.slice(offset, offset + limit);
+  }
+
+  async getFeaturedListings(limit = 5): Promise<Listing[]> {
+    return this.getListings({ featured: true, approved: true, limit });
+  }
+
+  async getRecentListings(limit = 10): Promise<Listing[]> {
+    return this.getListings({ approved: true, limit });
+  }
+
+  async getNearbyListings(lat: number, lng: number, radiusKm = 5, limit = 10): Promise<Listing[]> {
+    // Calculate distance using Haversine formula
+    const listings = Array.from(this.listings.values())
+      .filter(listing => listing.approved)
+      .map(listing => {
+        const R = 6371; // Earth radius in km
+        const dLat = this.deg2rad(listing.latitude - lat);
+        const dLng = this.deg2rad(listing.longitude - lng);
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(this.deg2rad(lat)) * Math.cos(this.deg2rad(listing.latitude)) * 
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c; // Distance in km
+        
+        return { listing, distance };
+      })
+      .filter(item => item.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, limit);
+    
+    return listings.map(item => item.listing);
+  }
+
+  private deg2rad(deg: number): number {
+    return deg * (Math.PI/180);
+  }
+
+  async updateListing(id: number, listingData: Partial<Listing>): Promise<Listing | undefined> {
+    const existingListing = this.listings.get(id);
+    if (!existingListing) return undefined;
+    
+    const updatedListing = { 
+      ...existingListing, 
+      ...listingData,
+      updatedAt: new Date()
+    };
+    this.listings.set(id, updatedListing);
+    return updatedListing;
+  }
+
+  async deleteListing(id: number): Promise<boolean> {
+    return this.listings.delete(id);
+  }
+
+  // Amenity methods
+  async createAmenity(insertAmenity: InsertAmenity): Promise<Amenity> {
+    const id = this.amenityIdCounter++;
+    const amenity: Amenity = { ...insertAmenity, id };
+    this.amenities.set(id, amenity);
+    return amenity;
+  }
+
+  async getAmenitiesByListingId(listingId: number): Promise<Amenity[]> {
+    return Array.from(this.amenities.values()).filter(
+      (amenity) => amenity.listingId === listingId,
+    );
+  }
+
+  // Conversation methods
+  async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
+    const id = this.conversationIdCounter++;
+    const now = new Date();
+    const conversation: Conversation = {
+      ...insertConversation,
+      id,
+      lastMessageAt: now,
+      createdAt: now
+    };
+    this.conversations.set(id, conversation);
+    return conversation;
+  }
+
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    return this.conversations.get(id);
+  }
+
+  async getConversationByParticipants(renterId: number, ownerId: number, listingId: number): Promise<Conversation | undefined> {
+    return Array.from(this.conversations.values()).find(
+      (conversation) => 
+        conversation.renterId === renterId && 
+        conversation.ownerId === ownerId && 
+        conversation.listingId === listingId
+    );
+  }
+
+  async getConversationsByUserId(userId: number): Promise<Conversation[]> {
+    return Array.from(this.conversations.values())
+      .filter(conversation => 
+        conversation.renterId === userId || conversation.ownerId === userId
+      )
+      .sort((a, b) => 
+        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+      );
+  }
+
+  async updateConversationLastMessageTime(id: number): Promise<Conversation | undefined> {
+    const conversation = this.conversations.get(id);
+    if (!conversation) return undefined;
+    
+    const updatedConversation = {
+      ...conversation,
+      lastMessageAt: new Date()
+    };
+    this.conversations.set(id, updatedConversation);
+    return updatedConversation;
+  }
+
+  // Message methods
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const id = this.messageIdCounter++;
+    const now = new Date();
+    const message: Message = {
+      ...insertMessage,
+      id,
+      read: false,
+      createdAt: now
+    };
+    this.messages.set(id, message);
+    
+    // Update last message time for the conversation
     await this.updateConversationLastMessageTime(message.conversationId);
     
-    return created[0];
+    return message;
   }
-  
-  async getMessagesByConversationId(conversationId: number, limit = 50, offset = 0): Promise<schema.Message[]> {
-    return await db.select()
-      .from(schema.messages)
-      .where(eq(schema.messages.conversationId, conversationId))
-      .orderBy(desc(schema.messages.createdAt))
-      .limit(limit)
-      .offset(offset);
+
+  async getMessagesByConversationId(conversationId: number, limit = 50, offset = 0): Promise<Message[]> {
+    return Array.from(this.messages.values())
+      .filter(message => message.conversationId === conversationId)
+      .sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(offset, offset + limit);
   }
-  
+
   async markMessagesAsRead(conversationId: number, userId: number): Promise<boolean> {
-    const updated = await db.update(schema.messages)
-      .set({ read: true })
-      .where(
-        and(
-          eq(schema.messages.conversationId, conversationId),
-          eq(schema.messages.read, false)
-        )
-      )
-      .returning();
-    return updated.length > 0;
-  }
-  
-  // Payment methods
-  async createPayment(payment: schema.InsertPayment): Promise<schema.Payment> {
-    const created = await db.insert(schema.payments).values(payment).returning();
-    return created[0];
-  }
-  
-  async getPayment(id: number): Promise<schema.Payment | undefined> {
-    const payments = await db.select().from(schema.payments).where(eq(schema.payments.id, id));
-    return payments[0];
-  }
-  
-  async getPaymentByReference(reference: string): Promise<schema.Payment | undefined> {
-    const payments = await db.select().from(schema.payments).where(eq(schema.payments.reference, reference));
-    return payments[0];
-  }
-  
-  async updatePayment(id: number, paymentData: Partial<schema.Payment>): Promise<schema.Payment | undefined> {
-    const updated = await db.update(schema.payments).set(paymentData).where(eq(schema.payments.id, id)).returning();
-    return updated[0];
-  }
-  
-  async getPaymentsByUserId(userId: number): Promise<schema.Payment[]> {
-    return await db.select().from(schema.payments).where(eq(schema.payments.userId, userId));
-  }
-  
-  // Contact access methods
-  async createContactAccess(access: schema.InsertContactAccess): Promise<schema.ContactAccess> {
-    const created = await db.insert(schema.contactAccess).values(access).returning();
-    return created[0];
-  }
-  
-  async getContactAccess(userId: number, listingId: number): Promise<schema.ContactAccess | undefined> {
-    const accesses = await db.select().from(schema.contactAccess).where(
-      and(
-        eq(schema.contactAccess.userId, userId),
-        eq(schema.contactAccess.listingId, listingId)
-      )
-    );
-    return accesses[0];
-  }
-  
-  async grantContactAccess(userId: number, listingId: number, paymentId?: number): Promise<schema.ContactAccess> {
-    // Check if access already exists
-    const existingAccess = await this.getContactAccess(userId, listingId);
+    const messagesToUpdate = Array.from(this.messages.values())
+      .filter(message => 
+        message.conversationId === conversationId && 
+        message.senderId !== userId && 
+        !message.read
+      );
     
-    if (existingAccess) {
-      // Update existing access
-      const updated = await db.update(schema.contactAccess)
-        .set({ 
-          granted: true,
-          paymentId: paymentId || existingAccess.paymentId 
-        })
-        .where(eq(schema.contactAccess.id, existingAccess.id))
-        .returning();
-      
-      return updated[0];
-    } else {
-      // Create new access
-      return await this.createContactAccess({
-        userId,
-        listingId,
-        granted: true,
-        paymentId,
-        grantedByAdmin: false
-      });
+    for (const message of messagesToUpdate) {
+      this.messages.set(message.id, { ...message, read: true });
     }
+    
+    return true;
   }
-  
-  async grantContactAccessByAdmin(userId: number, listingId: number): Promise<schema.ContactAccess> {
-    // Check if access already exists
+
+  // Payment methods
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const id = this.paymentIdCounter++;
+    const now = new Date();
+    const payment: Payment = {
+      ...insertPayment,
+      id,
+      createdAt: now
+    };
+    this.payments.set(id, payment);
+    return payment;
+  }
+
+  async getPayment(id: number): Promise<Payment | undefined> {
+    return this.payments.get(id);
+  }
+
+  async getPaymentByReference(reference: string): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(
+      (payment) => payment.reference === reference
+    );
+  }
+
+  async updatePayment(id: number, paymentData: Partial<Payment>): Promise<Payment | undefined> {
+    const existingPayment = this.payments.get(id);
+    if (!existingPayment) return undefined;
+    
+    const updatedPayment = { ...existingPayment, ...paymentData };
+    this.payments.set(id, updatedPayment);
+    return updatedPayment;
+  }
+
+  async getPaymentsByUserId(userId: number): Promise<Payment[]> {
+    return Array.from(this.payments.values())
+      .filter(payment => payment.userId === userId)
+      .sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+  }
+
+  // Contact access methods
+  async createContactAccess(insertAccess: InsertContactAccess): Promise<ContactAccess> {
+    const id = this.contactAccessIdCounter++;
+    const now = new Date();
+    const access: ContactAccess = {
+      ...insertAccess,
+      id,
+      grantedByAdmin: false,
+      createdAt: now
+    };
+    this.contactAccesses.set(id, access);
+    return access;
+  }
+
+  async getContactAccess(userId: number, listingId: number): Promise<ContactAccess | undefined> {
+    return Array.from(this.contactAccesses.values()).find(
+      (access) => access.userId === userId && access.listingId === listingId
+    );
+  }
+
+  async grantContactAccess(userId: number, listingId: number, paymentId?: number): Promise<ContactAccess> {
     const existingAccess = await this.getContactAccess(userId, listingId);
     
     if (existingAccess) {
-      // Update existing access
-      const updated = await db.update(schema.contactAccess)
-        .set({ 
-          granted: true,
-          grantedByAdmin: true 
-        })
-        .where(eq(schema.contactAccess.id, existingAccess.id))
-        .returning();
-      
-      return updated[0];
-    } else {
-      // Create new access
-      return await this.createContactAccess({
-        userId,
-        listingId,
+      const updatedAccess = { 
+        ...existingAccess, 
+        granted: true,
+        paymentId
+      };
+      this.contactAccesses.set(existingAccess.id, updatedAccess);
+      return updatedAccess;
+    }
+    
+    return this.createContactAccess({
+      userId,
+      listingId,
+      granted: true,
+      paymentId
+    });
+  }
+
+  async grantContactAccessByAdmin(userId: number, listingId: number): Promise<ContactAccess> {
+    const existingAccess = await this.getContactAccess(userId, listingId);
+    
+    if (existingAccess) {
+      const updatedAccess = { 
+        ...existingAccess, 
         granted: true,
         grantedByAdmin: true
-      });
+      };
+      this.contactAccesses.set(existingAccess.id, updatedAccess);
+      return updatedAccess;
     }
+    
+    const access = await this.createContactAccess({
+      userId,
+      listingId,
+      granted: true
+    });
+    
+    const updatedAccess = {
+      ...access,
+      grantedByAdmin: true
+    };
+    this.contactAccesses.set(access.id, updatedAccess);
+    return updatedAccess;
   }
-  
+
   // Notification methods
-  async createNotification(notification: schema.InsertNotification): Promise<schema.Notification> {
-    const created = await db.insert(schema.notifications).values(notification).returning();
-    return created[0];
+  async createNotification(insertNotification: InsertNotification): Promise<Notification> {
+    const id = this.notificationIdCounter++;
+    const now = new Date();
+    const notification: Notification = {
+      ...insertNotification,
+      id,
+      read: false,
+      createdAt: now
+    };
+    this.notifications.set(id, notification);
+    return notification;
   }
-  
-  async getNotificationsByUserId(userId: number, unreadOnly = false): Promise<schema.Notification[]> {
-    let query = db.select().from(schema.notifications).where(eq(schema.notifications.userId, userId));
+
+  async getNotificationsByUserId(userId: number, unreadOnly = false): Promise<Notification[]> {
+    let notifications = Array.from(this.notifications.values())
+      .filter(notification => notification.userId === userId);
     
     if (unreadOnly) {
-      query = query.where(eq(schema.notifications.read, false));
+      notifications = notifications.filter(notification => !notification.read);
     }
     
-    return await query.orderBy(desc(schema.notifications.createdAt));
+    return notifications.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
-  
-  async markNotificationAsRead(id: number): Promise<schema.Notification | undefined> {
-    const updated = await db.update(schema.notifications)
-      .set({ read: true })
-      .where(eq(schema.notifications.id, id))
-      .returning();
-    return updated[0];
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    if (!notification) return undefined;
+    
+    const updatedNotification = { ...notification, read: true };
+    this.notifications.set(id, updatedNotification);
+    return updatedNotification;
   }
-  
+
   async markAllNotificationsAsRead(userId: number): Promise<boolean> {
-    const updated = await db.update(schema.notifications)
-      .set({ read: true })
-      .where(
-        and(
-          eq(schema.notifications.userId, userId),
-          eq(schema.notifications.read, false)
-        )
-      )
-      .returning();
-    return updated.length > 0;
+    const notifications = await this.getNotificationsByUserId(userId, true);
+    
+    for (const notification of notifications) {
+      this.notifications.set(notification.id, { ...notification, read: true });
+    }
+    
+    return true;
   }
 }
 
-// Export a single instance
-export const storage: IStorage = new DatabaseStorage();
+export const storage = new MemStorage();
