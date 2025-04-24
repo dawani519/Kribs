@@ -1,61 +1,127 @@
-// Import types from shared schema
-import {
-  User as SchemaUser,
-  Listing as SchemaListing,
-  Conversation as SchemaConversation,
-  Message as SchemaMessage,
-  Payment as SchemaPayment,
-  Verification as SchemaVerification,
-  Amenity as SchemaAmenity,
-  Notification as SchemaNotification,
-  ContactAccess as SchemaContactAccess
-} from '../../shared/schema';
+// Core domain models
 
-// Extended types for frontend use
-export interface User extends SchemaUser {
+export interface UserProfile {
+  id: number;
+  email: string;
+  username: string;
+  fullName: string;
+  phoneNumber?: string;
+  role: 'admin' | 'agent' | 'landlord' | 'user';
+  bio?: string;
   avatar?: string;
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  isIDVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Listing extends SchemaListing {
+export interface Listing {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  category: string;
+  price: number;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  lat: number;
+  lng: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  squareMeters?: number;
   photos: string[];
+  amenities?: string[];
+  ownerId: number;
+  ownerName?: string;
+  ownerAvatar?: string;
+  featured: boolean;
+  approved: boolean;
+  createdAt: string;
+  updatedAt: string;
   saved?: boolean;
 }
 
-export interface Conversation extends SchemaConversation {
+export interface Conversation {
+  id: number;
+  listingId: number;
+  ownerId: number;
+  renterId: number;
   ownerName?: string;
   renterName?: string;
   listingTitle?: string;
   listingPhoto?: string;
+  lastMessageTime: string;
   unreadCount?: number;
+  createdAt: string;
 }
 
-export interface Message extends SchemaMessage {
-  // Extra frontend-specific properties can be added here
+export interface Message {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
-export interface Payment extends SchemaPayment {
-  // Extra frontend-specific properties can be added here
+export interface Payment {
+  id: number;
+  userId: number;
+  amount: number;
+  currency: string;
+  type: 'contact_fee' | 'listing_fee' | 'featured_fee';
+  status: 'pending' | 'successful' | 'failed';
+  reference: string;
+  listingId?: number;
+  transactionId?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
 }
 
-export interface Verification extends SchemaVerification {
-  // Extra frontend-specific properties can be added here
+export interface Verification {
+  id: number;
+  userId: number;
+  type: 'email' | 'phone' | 'id' | 'address';
+  status: 'pending' | 'verified' | 'rejected';
+  documentUrl?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Amenity extends SchemaAmenity {
+export interface Amenity {
+  id: number;
+  listingId: number;
+  name: string;
   icon?: React.ReactNode;
 }
 
-export interface Notification extends SchemaNotification {
-  // Extra frontend-specific properties can be added here
+export interface Notification {
+  id: number;
+  userId: number;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  linkUrl?: string;
+  createdAt: string;
 }
 
-export interface ContactAccess extends SchemaContactAccess {
-  // Extra frontend-specific properties can be added here
+export interface ContactAccess {
+  id: number;
+  userId: number;
+  listingId: number;
+  hasAccess: boolean;
+  paymentId?: number;
+  createdAt: string;
 }
 
 // Additional frontend-only types
 export interface AuthState {
-  user: User | null;
+  user: UserProfile | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -136,7 +202,7 @@ export interface ProtectedRouteProps {
   [x: string]: any;
 }
 
-// Google Maps related type
+// Google Maps and Paystack related types
 declare global {
   interface Window {
     google: any;

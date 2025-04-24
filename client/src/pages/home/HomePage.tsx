@@ -19,60 +19,99 @@ const HomePage: React.FC = () => {
   const [recentListings, setRecentListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Fetch featured and recent listings from Supabase
+  // Fetch featured and recent listings from Supabase if available
   useEffect(() => {
     const fetchListings = async () => {
       try {
         setLoading(true);
         
-        // Fetch featured listings from Supabase
-        const { data: featuredData, error: featuredError } = await supabase
+        let featuredData = [];
+        let recentData = [];
+        
+        // Check if the 'listings' table exists by trying to query it
+        const { error: checkError } = await supabase
           .from('listings')
-          .select('*')
-          .eq('featured', true)
-          .eq('approved', true)
-          .order('created_at', { ascending: false })
-          .limit(3);
+          .select('count', { count: 'exact', head: true });
         
-        if (featuredError) throw featuredError;
+        // If the table exists, fetch the data
+        if (!checkError) {
+          // Fetch featured listings from Supabase
+          const { data: featured, error: featuredError } = await supabase
+            .from('listings')
+            .select('*')
+            .eq('featured', true)
+            .eq('approved', true)
+            .order('created_at', { ascending: false })
+            .limit(3);
+          
+          if (!featuredError) {
+            featuredData = featured || [];
+          }
+          
+          // Fetch recent listings from Supabase
+          const { data: recent, error: recentError } = await supabase
+            .from('listings')
+            .select('*')
+            .eq('approved', true)
+            .order('created_at', { ascending: false })
+            .limit(6);
+          
+          if (!recentError) {
+            recentData = recent || [];
+          }
+        } else {
+          console.log('The listings table does not exist yet. Showing empty state.');
+        }
         
-        // Fetch recent listings from Supabase
-        const { data: recentData, error: recentError } = await supabase
-          .from('listings')
-          .select('*')
-          .eq('approved', true)
-          .order('created_at', { ascending: false })
-          .limit(6);
-        
-        if (recentError) throw recentError;
-        
-        // Format the data for our components
+        // Format the data for our components with all required fields
         const formattedFeatured = featuredData.map(item => ({
           id: item.id,
           title: item.title,
+          description: item.description || '',
           type: item.type,
+          category: item.category || '',
           address: item.address,
+          city: item.city || '',
+          state: item.state || '',
+          country: item.country || 'Nigeria',
           price: item.price,
+          lat: item.lat || 0,
+          lng: item.lng || 0,
           photos: item.photos || [],
           bedrooms: item.bedrooms,
           bathrooms: item.bathrooms,
           squareMeters: item.square_meters,
-          featured: item.featured,
-          createdAt: item.created_at
+          amenities: item.amenities || [],
+          ownerId: item.owner_id || 0,
+          featured: true,
+          approved: true,
+          createdAt: item.created_at || new Date().toISOString(),
+          updatedAt: item.updated_at || item.created_at || new Date().toISOString()
         }));
         
         const formattedRecent = recentData.map(item => ({
           id: item.id,
           title: item.title,
+          description: item.description || '',
           type: item.type,
+          category: item.category || '',
           address: item.address,
+          city: item.city || '',
+          state: item.state || '',
+          country: item.country || 'Nigeria',
           price: item.price,
+          lat: item.lat || 0,
+          lng: item.lng || 0,
           photos: item.photos || [],
           bedrooms: item.bedrooms,
           bathrooms: item.bathrooms,
           squareMeters: item.square_meters,
-          featured: item.featured,
-          createdAt: item.created_at
+          amenities: item.amenities || [],
+          ownerId: item.owner_id || 0,
+          featured: Boolean(item.featured),
+          approved: true,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at || item.created_at
         }));
         
         setFeaturedListings(formattedFeatured);
