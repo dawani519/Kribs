@@ -42,7 +42,8 @@ const RegisterRole = () => {
 
   const handleContinue = () => {
     if (selectedRole) {
-      navigate(`/register?role=${selectedRole}`);
+      navigate(ROUTES.REGISTER + `?role=${selectedRole}`);
+      console.log('Navigating to register with role:', selectedRole);
     } else {
       console.error('No role selected');
     }
