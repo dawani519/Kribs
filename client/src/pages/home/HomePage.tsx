@@ -8,6 +8,7 @@ import ListingGrid from '../../components/ListingGrid';
 import SearchFilterBar from '../../components/SearchFilterBar';
 import { ROUTES } from '../../config/constants';
 import { Listing } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 const HomePage: React.FC = () => {
   const [, navigate] = useLocation();
@@ -18,96 +19,72 @@ const HomePage: React.FC = () => {
   const [recentListings, setRecentListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Fetch featured and recent listings
+  // Fetch featured and recent listings from Supabase
   useEffect(() => {
-    // For now, we'll use sample data - in a real app this would come from API
-    setTimeout(() => {
-      const featured = [
-        {
-          id: 1,
-          title: 'Modern 3 Bedroom Apartment',
-          type: 'Apartment',
-          address: 'Lekki Phase 1, Lagos',
-          price: 450000,
-          photos: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267'],
-          bedrooms: 3,
-          bathrooms: 2,
-          squareMeters: 120,
-          featured: true,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 2,
-          title: 'Luxury Villa with Pool',
-          type: 'House',
-          address: 'Victoria Island, Lagos',
-          price: 850000,
-          photos: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9'],
-          bedrooms: 5,
-          bathrooms: 4,
-          squareMeters: 350,
-          featured: true,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 3,
-          title: 'Office Space in Business District',
-          type: 'Commercial',
-          address: 'Ikoyi, Lagos',
-          price: 650000,
-          photos: ['https://images.unsplash.com/photo-1497366811353-6870744d04b2'],
-          squareMeters: 200,
-          featured: true,
-          createdAt: new Date().toISOString()
-        }
-      ];
-      
-      const recent = [
-        {
-          id: 4,
-          title: 'Cozy Studio Apartment',
-          type: 'Apartment',
-          address: 'Yaba, Lagos',
-          price: 250000,
-          photos: ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688'],
-          bedrooms: 1,
-          bathrooms: 1,
-          squareMeters: 45,
-          featured: false,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 5,
-          title: 'Spacious 2 Bedroom Flat',
-          type: 'Apartment',
-          address: 'Surulere, Lagos',
-          price: 350000,
-          photos: ['https://images.unsplash.com/photo-1493809842364-78817add7ffb'],
-          bedrooms: 2,
-          bathrooms: 2,
-          squareMeters: 85,
-          featured: false,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 6,
-          title: 'Family Home with Garden',
-          type: 'House',
-          address: 'Ikeja, Lagos',
-          price: 550000,
-          photos: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750'],
-          bedrooms: 4,
-          bathrooms: 3,
-          squareMeters: 180,
-          featured: false,
-          createdAt: new Date().toISOString()
-        }
-      ];
-      
-      setFeaturedListings(featured);
-      setRecentListings(recent);
-      setLoading(false);
-    }, 1000);
+    const fetchListings = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch featured listings from Supabase
+        const { data: featuredData, error: featuredError } = await supabase
+          .from('listings')
+          .select('*')
+          .eq('featured', true)
+          .eq('approved', true)
+          .order('created_at', { ascending: false })
+          .limit(3);
+        
+        if (featuredError) throw featuredError;
+        
+        // Fetch recent listings from Supabase
+        const { data: recentData, error: recentError } = await supabase
+          .from('listings')
+          .select('*')
+          .eq('approved', true)
+          .order('created_at', { ascending: false })
+          .limit(6);
+        
+        if (recentError) throw recentError;
+        
+        // Format the data for our components
+        const formattedFeatured = featuredData.map(item => ({
+          id: item.id,
+          title: item.title,
+          type: item.type,
+          address: item.address,
+          price: item.price,
+          photos: item.photos || [],
+          bedrooms: item.bedrooms,
+          bathrooms: item.bathrooms,
+          squareMeters: item.square_meters,
+          featured: item.featured,
+          createdAt: item.created_at
+        }));
+        
+        const formattedRecent = recentData.map(item => ({
+          id: item.id,
+          title: item.title,
+          type: item.type,
+          address: item.address,
+          price: item.price,
+          photos: item.photos || [],
+          bedrooms: item.bedrooms,
+          bathrooms: item.bathrooms,
+          squareMeters: item.square_meters,
+          featured: item.featured,
+          createdAt: item.created_at
+        }));
+        
+        setFeaturedListings(formattedFeatured);
+        setRecentListings(formattedRecent);
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchListings();
   }, []);
   
   // Handle search
