@@ -17,19 +17,19 @@ const RegisterRole = () => {
 
   const roles: Role[] = [
     {
-      id: USER_ROLES.RENTER,
-      title: "Renter",
-      icon: "fas fa-home",
-      description: "I'm looking for a property to rent."
+        id: USER_ROLES.find(role => role.value === 'RENTER')?.value || '',
+        title: "Renter",
+        icon: "fas fa-home",
+        description: "I'm looking for a property to rent."
     },
     {
-      id: USER_ROLES.LANDLORD,
+      id: USER_ROLES.find(role => role.value === 'LANDLORD')?.value || '',
       title: "Landlord",
       icon: "fas fa-key",
       description: "I have property to rent out."
     },
     {
-      id: USER_ROLES.MANAGER,
+      id: USER_ROLES.find(role => role.value === 'MANAGER')?.value || '',
       title: "Manager",
       icon: "fas fa-building",
       description: "I manage properties for others."
