@@ -1,4 +1,5 @@
-import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, json, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -200,3 +201,59 @@ export type InsertContactAccess = z.infer<typeof insertContactAccessSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Define relations between tables
+export const usersRelations = relations(users, ({ many }) => ({
+  listings: many(listings, { relationName: 'userListings' }),
+  conversationsAsOwner: many(conversations, { relationName: 'owner' }),
+  conversationsAsRenter: many(conversations, { relationName: 'renter' }),
+  messages: many(messages),
+  payments: many(payments),
+  verifications: many(verifications),
+  contactAccess: many(contactAccess),
+  notifications: many(notifications),
+}));
+
+export const listingsRelations = relations(listings, ({ one, many }) => ({
+  user: one(users, { fields: [listings.userId], references: [users.id], relationName: 'userListings' }),
+  amenities: many(amenities),
+  conversations: many(conversations),
+  payments: many(payments),
+  contactAccess: many(contactAccess),
+}));
+
+export const amenitiesRelations = relations(amenities, ({ one }) => ({
+  listing: one(listings, { fields: [amenities.listingId], references: [listings.id] }),
+}));
+
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  listing: one(listings, { fields: [conversations.listingId], references: [listings.id] }),
+  owner: one(users, { fields: [conversations.ownerId], references: [users.id], relationName: 'owner' }),
+  renter: one(users, { fields: [conversations.renterId], references: [users.id], relationName: 'renter' }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, { fields: [messages.conversationId], references: [conversations.id] }),
+  sender: one(users, { fields: [messages.senderId], references: [users.id] }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one, many }) => ({
+  user: one(users, { fields: [payments.userId], references: [users.id] }),
+  listing: one(listings, { fields: [payments.listingId], references: [listings.id] }),
+  contactAccess: many(contactAccess),
+}));
+
+export const verificationsRelations = relations(verifications, ({ one }) => ({
+  user: one(users, { fields: [verifications.userId], references: [users.id] }),
+}));
+
+export const contactAccessRelations = relations(contactAccess, ({ one }) => ({
+  user: one(users, { fields: [contactAccess.userId], references: [users.id] }),
+  listing: one(listings, { fields: [contactAccess.listingId], references: [listings.id] }),
+  payment: one(payments, { fields: [contactAccess.paymentId], references: [payments.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
