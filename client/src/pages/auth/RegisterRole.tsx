@@ -42,7 +42,7 @@ const RegisterRole = () => {
 
   const handleContinue = () => {
     if (selectedRole) {
-      navigate(`${ROUTES.REGISTER}?role=${selectedRole}`);
+      navigate(ROUTES.REGISTER + `?role=${selectedRole}`);
     }
   };
 
@@ -67,12 +67,12 @@ const RegisterRole = () => {
               <button
                 key={role.id}
                 type="button"
+                onClick={() => handleRoleSelect(role.id)}
                 className={`flex flex-col items-center justify-center p-4 border rounded-lg hover:border-primary transition-colors ${
                   selectedRole === role.id 
                     ? "border-primary bg-primary bg-opacity-10" 
                     : "border-neutral-300"
                 }`}
-                onClick={() => handleRoleSelect(role.id)}
               >
                 <i className={`${role.icon} text-2xl mb-2 ${
                   selectedRole === role.id ? "text-primary" : "text-neutral-600"
