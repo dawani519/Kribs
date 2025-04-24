@@ -66,6 +66,7 @@ const RegisterRole = () => {
             {roles.map((role) => (
               <button
                 key={role.id}
+                type="button"
                 className={`flex flex-col items-center justify-center p-4 border rounded-lg hover:border-primary transition-colors ${
                   selectedRole === role.id 
                     ? "border-primary bg-primary bg-opacity-10" 
