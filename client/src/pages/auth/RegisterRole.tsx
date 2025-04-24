@@ -42,7 +42,7 @@ const RegisterRole = () => {
 
   const handleContinue = () => {
     if (selectedRole) {
-      const registerPath = `/register?role=${selectedRole}`;
+      const registerPath = `/Register?role=${selectedRole}`;
       console.log('Navigating to:', registerPath);
       navigate(registerPath);
     } else {
