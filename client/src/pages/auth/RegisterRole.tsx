@@ -1,8 +1,8 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ROUTES, USER_ROLES } from "@/config/constants";
+import { ROUTES } from "@/config/constants";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface Role {
   id: string;
@@ -17,19 +17,19 @@ const RegisterRole = () => {
 
   const roles: Role[] = [
     {
-        id: USER_ROLES.find(role => role.value === 'RENTER')?.value || '',
-        title: "Renter",
-        icon: "fas fa-home",
-        description: "I'm looking for a property to rent."
+      id: 'renter',
+      title: "Renter",
+      icon: "fas fa-home",
+      description: "I'm looking for a property to rent."
     },
     {
-      id: USER_ROLES.find(role => role.value === 'LANDLORD')?.value || '',
+      id: 'landlord',
       title: "Landlord",
       icon: "fas fa-key",
       description: "I have property to rent out."
     },
     {
-      id: USER_ROLES.find(role => role.value === 'MANAGER')?.value || '',
+      id: 'manager',
       title: "Manager",
       icon: "fas fa-building",
       description: "I manage properties for others."
@@ -53,7 +53,6 @@ const RegisterRole = () => {
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-md mx-auto">
-        {/* Header */}
         <div className="flex items-center mb-6">
           <button onClick={handleBackToLogin} className="p-2">
             <i className="fas fa-arrow-left text-neutral-600"></i>
@@ -61,7 +60,6 @@ const RegisterRole = () => {
           <h2 className="text-2xl font-semibold ml-2">Create Account</h2>
         </div>
         
-        {/* Role Selection */}
         <div className="mb-6">
           <p className="text-neutral-700 mb-3 font-medium">I am a:</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -89,7 +87,6 @@ const RegisterRole = () => {
           </p>
         </div>
         
-        {/* Continue Button */}
         <Button
           onClick={handleContinue}
           className="w-full bg-primary hover:bg-primary/90"
