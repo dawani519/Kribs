@@ -9,14 +9,18 @@ import { Label } from "@/components/ui/label";
 import { isValidEmail, isValidNigerianPhone } from "@/lib/utils";
 
 const Register = () => {
-  const [location, navigate] = useLocation();
+  // Wouter's location doesn't include query strings, use window.location.search
+  const [, navigate] = useLocation();
+  console.log("Raw window.location.search on mount:", window.location.search);
+
   const { register, isLoading } = useAuth();
   const { toast } = useToast();
-  
+
   // Parse role from URL query
-  const params = new URLSearchParams(location.split('?')[1]);
+  const params = new URLSearchParams(window.location.search);
   const role = params.get('role') || USER_ROLES.RENTER;
-  
+  console.log("Parsed role in Register:", role);
+
   // Form state
   const [formData, setFormData] = useState({
     username: "",
@@ -30,98 +34,98 @@ const Register = () => {
     companyName: "",
     licenseNumber: "",
   });
-  
+
   // Form validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  // Determine which fields to show based on role
+
+  // Show/hide fields based on role
   const isLandlord = role === USER_ROLES.LANDLORD;
   const isManager = role === USER_ROLES.MANAGER;
   const showCompanyField = isLandlord || isManager;
   const showLicenseField = isManager;
-  
-  // If no role is provided, redirect to role selection
+
+  // Redirect to role selection if no role
   useEffect(() => {
     if (!role) {
+      console.warn("No role provided, redirecting to role selection");
       navigate(ROUTES.REGISTER_ROLE);
     }
   }, [role, navigate]);
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    
-    // Clear error when user types
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
+      setErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
-  
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
-    // Required fields validation
-    const requiredFields = ["username", "email", "password", "confirmPassword", "firstName", "lastName", "phone"];
+    const requiredFields = [
+      "username", "email", "password", "confirmPassword",
+      "firstName", "lastName", "phone"
+    ];
+
     requiredFields.forEach(field => {
       if (!formData[field as keyof typeof formData]) {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`;
+        newErrors[field] =
+          `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`;
       }
     });
-    
-    // Email validation
+
     if (formData.email && !isValidEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address";
     }
-    
-    // Phone validation
     if (formData.phone && !isValidNigerianPhone(formData.phone)) {
       newErrors.phone = "Please enter a valid Nigerian phone number";
     }
-    
-    // Password validation
     if (formData.password && formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
     }
-    
-    // Confirm password validation
-    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+    if (
+      formData.password && formData.confirmPassword &&
+      formData.password !== formData.confirmPassword
+    ) {
       newErrors.confirmPassword = "Passwords do not match";
     }
-    
-    // Role-specific validations
     if (isManager && !formData.licenseNumber) {
       newErrors.licenseNumber = "License number is required for managers";
     }
-    
+
     setErrors(newErrors);
+    console.log("Validation errors:", newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validate()) return;
-    
+    console.log("Submitting registration, formData:", formData);
+
+    if (!validate()) {
+      console.warn("Validation failed, aborting registration");
+      return;
+    }
+
     try {
-      // Remove confirmPassword and any empty optional fields
-      const { confirmPassword, ...registerData } = formData;
+      // Remove confirmPassword and empty fields
+      const { confirmPassword, ...dataToRegister } = formData;
       const cleanData = Object.fromEntries(
-        Object.entries(registerData).filter(([_, v]) => v !== "")
+        Object.entries(dataToRegister).filter(([_, v]) => v !== "")
       );
-      
-      await register(cleanData);
+      console.log("Clean data to register:", cleanData);
+
+      const result = await register(cleanData);
+      console.log("Register result:", result);
+
       toast({
         title: "Registration Successful",
         description: "Your account has been created. Please verify your identity.",
       });
+      console.log("Navigating to verification");
       navigate(ROUTES.VERIFICATION);
     } catch (error: any) {
+      console.error("Registration Failed:", error);
       toast({
         title: "Registration Failed",
         description: error.message || "Please check your information and try again.",
@@ -129,11 +133,12 @@ const Register = () => {
       });
     }
   };
-  
+
   const handleBackToRoleSelection = () => {
+    console.log("Going back to role selection");
     navigate(ROUTES.REGISTER_ROLE);
   };
-  
+
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-md mx-auto">
@@ -144,10 +149,11 @@ const Register = () => {
           </button>
           <h2 className="text-2xl font-semibold ml-2">Create Account</h2>
         </div>
-        
+
         {/* Registration Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
+            {/* First Name */}
             <div className="space-y-1">
               <Label htmlFor="firstName">First Name</Label>
               <Input
@@ -158,11 +164,9 @@ const Register = () => {
                 placeholder="First Name"
                 className={errors.firstName ? "border-red-500" : ""}
               />
-              {errors.firstName && (
-                <p className="text-red-500 text-xs">{errors.firstName}</p>
-              )}
+              {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName}</p>}
             </div>
-            
+            {/* Last Name */}
             <div className="space-y-1">
               <Label htmlFor="lastName">Last Name</Label>
               <Input
@@ -173,12 +177,10 @@ const Register = () => {
                 placeholder="Last Name"
                 className={errors.lastName ? "border-red-500" : ""}
               />
-              {errors.lastName && (
-                <p className="text-red-500 text-xs">{errors.lastName}</p>
-              )}
+              {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName}</p>}
             </div>
           </div>
-          
+          {/* Username */}
           <div className="space-y-1">
             <Label htmlFor="username">Username</Label>
             <Input
@@ -189,11 +191,9 @@ const Register = () => {
               placeholder="Choose a username"
               className={errors.username ? "border-red-500" : ""}
             />
-            {errors.username && (
-              <p className="text-red-500 text-xs">{errors.username}</p>
-            )}
+            {errors.username && <p className="text-red-500 text-xs">{errors.username}</p>}
           </div>
-          
+          {/* Email */}
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -205,11 +205,9 @@ const Register = () => {
               placeholder="Email address"
               className={errors.email ? "border-red-500" : ""}
             />
-            {errors.email && (
-              <p className="text-red-500 text-xs">{errors.email}</p>
-            )}
+            {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
           </div>
-          
+          {/* Phone */}
           <div className="space-y-1">
             <Label htmlFor="phone">Phone Number</Label>
             <Input
@@ -221,12 +219,10 @@ const Register = () => {
               placeholder="Phone number"
               className={errors.phone ? "border-red-500" : ""}
             />
-            {errors.phone && (
-              <p className="text-red-500 text-xs">{errors.phone}</p>
-            )}
+            {errors.phone && <p className="text-red-500 text-xs">{errors.phone}</p>}
             <p className="text-xs text-neutral-500">Format: 08012345678 or +2348012345678</p>
           </div>
-          
+          {/* Password */}
           <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -238,11 +234,9 @@ const Register = () => {
               placeholder="Create password"
               className={errors.password ? "border-red-500" : ""}
             />
-            {errors.password && (
-              <p className="text-red-500 text-xs">{errors.password}</p>
-            )}
+            {errors.password && <p className="text-red-500 text-xs">{errors.password}</p>}
           </div>
-          
+          {/* Confirm Password */}
           <div className="space-y-1">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
             <Input
@@ -254,11 +248,9 @@ const Register = () => {
               placeholder="Confirm password"
               className={errors.confirmPassword ? "border-red-500" : ""}
             />
-            {errors.confirmPassword && (
-              <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
-            )}
+            {errors.confirmPassword && <p className="text-red-500 text-xs">{errors.confirmPassword}</p>}
           </div>
-          
+          {/* Company Name (optional) */}
           {showCompanyField && (
             <div className="space-y-1">
               <Label htmlFor="companyName">Company Name (Optional)</Label>
@@ -271,7 +263,7 @@ const Register = () => {
               />
             </div>
           )}
-          
+          {/* License Number (for managers) */}
           {showLicenseField && (
             <div className="space-y-1">
               <Label htmlFor="licenseNumber">License Number</Label>
@@ -283,12 +275,10 @@ const Register = () => {
                 placeholder="License number"
                 className={errors.licenseNumber ? "border-red-500" : ""}
               />
-              {errors.licenseNumber && (
-                <p className="text-red-500 text-xs">{errors.licenseNumber}</p>
-              )}
+              {errors.licenseNumber && <p className="text-red-500 text-xs">{errors.licenseNumber}</p>}
             </div>
           )}
-          
+          {/* Submit Button */}
           <div className="pt-2">
             <Button
               type="submit"
@@ -305,7 +295,7 @@ const Register = () => {
               )}
             </Button>
           </div>
-          
+          {/* Terms */}
           <p className="text-xs text-neutral-500 text-center">
             By registering, you agree to Kribs' <a href="#" className="text-primary">Terms of Service</a> and <a href="#" className="text-primary">Privacy Policy</a>
           </p>

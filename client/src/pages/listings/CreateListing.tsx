@@ -255,10 +255,11 @@ const CreateListing = () => {
                           </FormControl>
                           <SelectContent>
                             {PROPERTY_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
                               </SelectItem>
                             ))}
+
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -283,8 +284,8 @@ const CreateListing = () => {
                           </FormControl>
                           <SelectContent>
                             {PROPERTY_CATEGORIES.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
+                                <SelectItem key={category.value} value={category.value}>
+                                  {category.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -359,12 +360,19 @@ const CreateListing = () => {
                     <FormItem className="mb-4">
                       <FormLabel>Price (₦)*</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g. 150000" 
-                          onChange={e => field.onChange(parseFloat(e.target.value))}
-                          value={field.value}
+                        <Input
+                          type="number"
+                          placeholder="e.g. 150000"
+                          onChange={e => {
+                            const v = e.target.value
+                            // interpret empty string as zero (or you could choose `undefined`)
+                            const num = v === "" ? 0 : parseFloat(v)
+                            field.onChange(isNaN(num) ? 0 : num)
+                          }}
+                          // never feed NaN back into the input
+                          value={isNaN(field.value) ? "" : field.value}
                         />
+
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -382,9 +390,17 @@ const CreateListing = () => {
                           <Input 
                             type="number" 
                             placeholder="e.g. 3" 
-                            onChange={e => field.onChange(parseFloat(e.target.value))}
-                            value={field.value === undefined ? '' : field.value}
+                            onChange={e => {
+                              const v = e.target.value;
+                              // if they clear the box, go back to undefined
+                              const asNum = v === "" ? undefined : parseFloat(v);
+                              // if parseFloat produced NaN, fall back to undefined
+                              field.onChange(isNaN(asNum as number) ? undefined : asNum);
+                            }}
+                            // if the field is undefined (or somehow NaN), render as empty string
+                            value={field.value === undefined || isNaN(field.value) ? "" : field.value}
                           />
+
                         </FormControl>
                         <FormMessage />
                       </FormItem>

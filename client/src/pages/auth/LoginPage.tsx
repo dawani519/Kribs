@@ -29,13 +29,15 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     
-    try {
-      await login(credentials);
-      navigate(ROUTES.HOME);
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
-    }
-  };
+  try {
+    const user = await login(credentials);
+    console.log('Logged in user:', user); // <== See if Supabase returned a user
+    navigate(ROUTES.HOME);
+  } catch (err: any) {
+    console.error('Login error:', err);   // <== Check for Supabase errors
+    setError(err.message || 'Login failed. Please check your credentials.');
+  }
+
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">

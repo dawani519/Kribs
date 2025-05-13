@@ -96,8 +96,10 @@ class ListingService {
    * Get user's own listings
    */
   async getUserListings(): Promise<Listing[]> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const {data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const supaUser = authData.user;
+    if (!supaUser) throw new Error('User not authenticated');
 
     const { data, error } = await supabase
       .from('listings')
@@ -105,7 +107,7 @@ class ListingService {
         *,
         amenities(*)
       `)
-      .eq('user_id', user.user.id)
+      .eq('user_id', supaUser.id)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -263,17 +265,20 @@ class ListingService {
    * Create a new listing
    */
   async createListing(listingData: ListingFormData): Promise<Listing> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const supaUser = authData.user;
+    if (!supaUser) throw new Error('User not authenticated');
 
     // Upload photos first
     const photoUrls = await this.uploadPhotos(listingData.photos);
 
+    
     // Insert listing record
     const { data, error } = await supabase
       .from('listings')
       .insert({
-        user_id: user.user.id,
+        user_id: supaUser.id,
         title: listingData.title,
         description: listingData.description,
         type: listingData.type,
@@ -292,7 +297,9 @@ class ListingService {
         furnished: listingData.furnished,
         pet_friendly: listingData.petFriendly,
         has_parking: listingData.hasParking,
-        available_from: listingData.availableFrom.toISOString(),
+        available_from: listingData.availableFrom
+        ? listingData.availableFrom.toISOString()
+        : null,
         photos: photoUrls,
         approved: false, // Require approval by default
         featured: false, // Not featured by default
@@ -303,7 +310,11 @@ class ListingService {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("🔥 Supabase INSERT error in createListing:", JSON.stringify(error, null, 2));
+      // re-throw so your outer catch still runs
+      throw error;
+    }
 
     // Add amenities if provided
     if (listingData.amenities && listingData.amenities.length > 0) {
@@ -327,18 +338,25 @@ class ListingService {
    * Update an existing listing
    */
   async updateListing(id: number, listingData: Partial<ListingFormData>): Promise<Listing> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    // ← same destructure:
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const supaUser = authData.user;
+    if (!supaUser) throw new Error('User not authenticated');
 
-    // Check if user owns the listing
+    // check ownership
     const { data: existingListing, error: checkError } = await supabase
       .from('listings')
       .select('user_id')
       .eq('id', id)
       .single();
-
     if (checkError) throw new Error(checkError.message);
-    if (existingListing.user_id !== user.user.id) throw new Error('You do not have permission to update this listing');
+
+    // ← compare against supaUser.id, not user.user.id
+    if (existingListing.user_id !== supaUser.id) {
+      throw new Error('You do not have permission to update this listing');
+    }
+
 
     // Prepare update data
     const updateData: any = {
@@ -412,8 +430,14 @@ class ListingService {
    * Delete a listing
    */
   async deleteListing(id: number): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    // top of your method
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const supaUser = authData.user;
+    if (!supaUser) throw new Error('User not authenticated');
+
+    // now you can use supaUser.id everywhere …
+
 
     // Check if user owns the listing
     const { data: existingListing, error: checkError } = await supabase
@@ -423,7 +447,7 @@ class ListingService {
       .single();
 
     if (checkError) throw new Error(checkError.message);
-    if (existingListing.user_id !== user.user.id) throw new Error('You do not have permission to delete this listing');
+    if (existingListing.user_id !== supaUser.id) throw new Error('You do not have permission to delete this listing');
 
     // Delete amenities first (due to foreign key constraints)
     const { error: amenityError } = await supabase
@@ -584,13 +608,16 @@ class ListingService {
    * Upload photos to Supabase storage
    */
   private async uploadPhotos(photos: File[]): Promise<string[]> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const supaUser = authData.user;
+    if (!supaUser) throw new Error('User not authenticated');
+
 
     const photoUrls: string[] = [];
 
     for (const photo of photos) {
-      const fileName = `${user.user.id}/${Date.now()}-${photo.name}`;
+      const fileName = `${supaUser.id}/${Date.now()}-${photo.name}`;
       
       const { data, error } = await supabase.storage
         .from('listing-photos')

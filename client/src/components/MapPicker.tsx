@@ -1,3 +1,4 @@
+// src/components/MapPicker.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { GOOGLE_MAPS_API_KEY } from '../config/env';
 import { Alert, AlertDescription } from './ui/alert';
@@ -17,8 +18,38 @@ interface MapPickerProps {
   readOnly?: boolean;
 }
 
+// Tell TypeScript about window.google
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 /**
- * MapPicker component - allows selecting a location on a map
+ * Injects the Google Maps script tag once.
+ */
+const loadGoogleMapsScript = (() => {
+  let promise: Promise<void> | null = null;
+  return (apiKey: string) => {
+    if (promise) return promise;
+    promise = new Promise((resolve, reject) => {
+      if (window.google && window.google.maps) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+      script.async = true;
+      script.onerror = () => reject(new Error('Failed to load Google Maps'));
+      script.onload = () => resolve();
+      document.head.appendChild(script);
+    });
+    return promise;
+  };
+})();
+
+/**
+ * MapPicker component — lets you pick or display an address on Google Maps.
  */
 const MapPicker: React.FC<MapPickerProps> = ({
   initialCoordinates,
@@ -26,176 +57,128 @@ const MapPicker: React.FC<MapPickerProps> = ({
   onLocationSelect,
   height = '300px',
   readOnly = false,
-}: MapPickerProps) => {
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [marker, setMarker] = useState<google.maps.Marker | null>(null);
+  const markerRef = useRef<any>(null);
+  const [map, setMap] = useState<any>(null);
   const [address, setAddress] = useState(initialAddress);
   const [addressInput, setAddressInput] = useState(initialAddress);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
-  
-  // Check if Google Maps API is available
+
   const isGoogleMapsAvailable = !!(GOOGLE_MAPS_API_KEY && window.google?.maps);
-  
-  // Initialize the map
+
+  // Load script + initialize map _once_
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
       setError('Google Maps API key is missing');
       return;
     }
-    
-    if (mapRef.current && !map && window.google?.maps) {
-      setGoogleMapsLoaded(true);
-      
-      // Default coordinates (Lagos, Nigeria)
-      const defaultCoordinates = { lat: 6.5244, lng: 3.3792 };
-      const coordinates = initialCoordinates || defaultCoordinates;
-      
-      // Create the map
-      const mapInstance = new window.google.maps.Map(mapRef.current, {
-        center: coordinates,
-        zoom: 14,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      });
-      
-      // Create a marker at the specified coordinates
-      const markerInstance = new window.google.maps.Marker({
-        position: coordinates,
-        map: mapInstance,
-        draggable: !readOnly,
-      });
-      
-      // Add event listener for marker drag end
-      if (!readOnly) {
-        markerInstance.addListener('dragend', () => {
-          const position = markerInstance.getPosition();
-          if (position) {
-            const newCoordinates = { lat: position.lat(), lng: position.lng() };
-            reverseGeocode(newCoordinates);
-          }
+
+    let geocoder: any;
+    loadGoogleMapsScript(GOOGLE_MAPS_API_KEY)
+      .then(() => {
+        if (!mapRef.current) return;
+
+        geocoder = new window.google.maps.Geocoder();
+        const defaultCoordinates = { lat: 6.5244, lng: 3.3792 };
+        const coords = initialCoordinates || defaultCoordinates;
+
+        // Create map
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
+          center: coords,
+          zoom: 14,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
         });
-        
-        // Add event listener for map click
-        mapInstance.addListener('click', (event: google.maps.MapMouseEvent) => {
-          const position = event.latLng;
-          if (position) {
-            markerInstance.setPosition(position);
-            const newCoordinates = { lat: position.lat(), lng: position.lng() };
-            reverseGeocode(newCoordinates);
-          }
+        setMap(mapInstance);
+
+        // Create marker
+        const marker = new window.google.maps.Marker({
+          position: coords,
+          map: mapInstance,
+          draggable: !readOnly,
         });
-      }
-      
-      // Save instances to state
-      setMap(mapInstance);
-      setMarker(markerInstance);
-      
-      // If initialAddress is not provided but initialCoordinates is, reverse geocode to get the address
-      if (initialCoordinates && !initialAddress) {
-        reverseGeocode(initialCoordinates);
-      }
-    }
-  }, [GOOGLE_MAPS_API_KEY, window.google?.maps]);
-  
-  // Update marker position when initialCoordinates change
+        markerRef.current = marker;
+
+        // If draggable, wire up events
+        if (!readOnly) {
+          marker.addListener('dragend', () => {
+            const pos = marker.getPosition();
+            if (pos) reverseGeocode({ lat: pos.lat(), lng: pos.lng() });
+          });
+          mapInstance.addListener('click', (ev: any) => {
+            const pos = ev.latLng;
+            marker.setPosition(pos);
+            reverseGeocode({ lat: pos.lat(), lng: pos.lng() });
+          });
+        }
+
+        // If we have an initial address but no initial coords, geocode it
+        if (!initialCoordinates && initialAddress) {
+          geocodeAddress(initialAddress);
+        }
+      })
+      .catch((err) => setError(err.message));
+  }, []); // Run only once
+
+  // keep marker in sync if parent moves it
   useEffect(() => {
-    if (map && marker && initialCoordinates) {
-      marker.setPosition(initialCoordinates);
-      map.setCenter(initialCoordinates);
+    if (map && markerRef.current && initialCoordinates) {
+      const { lat, lng } = initialCoordinates;
+      markerRef.current.setPosition({ lat, lng });
+      map.setCenter({ lat, lng });
     }
-  }, [initialCoordinates, map, marker]);
-  
-  // Update address and addressInput when initialAddress changes
+  }, [initialCoordinates, map]);
+
+  // update address if parent changes it
   useEffect(() => {
     setAddress(initialAddress);
     setAddressInput(initialAddress);
   }, [initialAddress]);
-  
-  // Geocode address to coordinates
-  const geocodeAddress = async () => {
-    if (!addressInput.trim() || !window.google?.maps) return;
-    
+
+  const geocodeAddress = (addr: string) => {
+    if (!addr.trim() || !window.google?.maps) return;
     setLoading(true);
     setError(null);
-    
-    try {
-      const geocoder = new window.google.maps.Geocoder();
-      
-      geocoder.geocode({ address: addressInput }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const location = results[0].geometry.location;
-          const newCoordinates = { lat: location.lat(), lng: location.lng() };
-          
-          // Update map and marker
-          if (map && marker) {
-            map.setCenter(newCoordinates);
-            marker.setPosition(newCoordinates);
-          }
-          
-          // Update address
-          const formattedAddress = results[0].formatted_address;
-          setAddress(formattedAddress);
-          
-          // Callback with new coordinates and address
-          if (onLocationSelect) {
-            onLocationSelect(newCoordinates, formattedAddress);
-          }
-        } else {
-          setError('Could not find location. Please try a different address.');
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: addr }, (results: any, status: string) => {
+      if (status === 'OK' && results?.[0]) {
+        const loc = results[0].geometry.location;
+        const newCoords = { lat: loc.lat(), lng: loc.lng() };
+        if (map && markerRef.current) {
+          map.setCenter(newCoords);
+          markerRef.current.setPosition(newCoords);
         }
-        
-        setLoading(false);
-      });
-    } catch (error) {
-      setError('Error finding location. Please try again.');
+        const formatted = results[0].formatted_address;
+        setAddress(formatted);
+        onLocationSelect?.(newCoords, formatted);
+      } else {
+        setError('Could not find location. Please try again.');
+      }
       setLoading(false);
-    }
+    });
   };
-  
-  // Reverse geocode coordinates to address
-  const reverseGeocode = async (coordinates: Coordinates) => {
+
+  const reverseGeocode = (coords: Coordinates) => {
     if (!window.google?.maps) return;
-    
     setLoading(true);
     setError(null);
-    
-    try {
-      const geocoder = new window.google.maps.Geocoder();
-      const latlng = { lat: coordinates.lat, lng: coordinates.lng };
-      
-      geocoder.geocode({ location: latlng }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const formattedAddress = results[0].formatted_address;
-          setAddress(formattedAddress);
-          setAddressInput(formattedAddress);
-          
-          // Callback with new coordinates and address
-          if (onLocationSelect) {
-            onLocationSelect(coordinates, formattedAddress);
-          }
-        } else {
-          setError('Could not determine address for this location.');
-        }
-        
-        setLoading(false);
-      });
-    } catch (error) {
-      setError('Error finding address. Please try again.');
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ location: coords }, (results: any, status: string) => {
+      if (status === 'OK' && results?.[0]) {
+        const formatted = results[0].formatted_address;
+        setAddress(formatted);
+        setAddressInput(formatted);
+        onLocationSelect?.(coords, formatted);
+      } else {
+        setError('Could not determine address for this location.');
+      }
       setLoading(false);
-    }
+    });
   };
-  
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    geocodeAddress();
-  };
-  
-  // No Google Maps API key
+
   if (!isGoogleMapsAvailable) {
     return (
       <div className="space-y-4">
@@ -204,10 +187,9 @@ const MapPicker: React.FC<MapPickerProps> = ({
             Google Maps functionality is not available. Please provide a Google Maps API key.
           </AlertDescription>
         </Alert>
-        
         <div className="space-y-2">
           <Label htmlFor="address">Address</Label>
-          <Input 
+          <Input
             id="address"
             value={addressInput}
             onChange={(e) => setAddressInput(e.target.value)}
@@ -218,60 +200,51 @@ const MapPicker: React.FC<MapPickerProps> = ({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-4">
-      {/* Address input */}
+      {/* Address lookup */}
       {!readOnly && (
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="address">Address</Label>
           <div className="flex space-x-2">
-            <Input 
+            <Input
               id="address"
               value={addressInput}
               onChange={(e) => setAddressInput(e.target.value)}
               placeholder="Enter an address to find on the map"
               disabled={loading}
             />
-            <button 
-              type="submit" 
+            <button
+              type="button"
+              onClick={() => geocodeAddress(addressInput)}
               className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 disabled:opacity-50"
               disabled={loading || !addressInput.trim()}
             >
               {loading ? 'Finding...' : 'Find'}
             </button>
           </div>
-        </form>
+        </div>
       )}
-      
-      {/* Display address if in read-only mode */}
+
       {readOnly && address && (
         <div className="text-neutral-700">
           <strong>Location:</strong> {address}
         </div>
       )}
-      
-      {/* Error message */}
+
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
-      {/* Map container */}
-      <div 
-        ref={mapRef} 
-        className="rounded-md overflow-hidden border border-neutral-200" 
+
+      <div
+        ref={mapRef}
+        className="rounded-md overflow-hidden border border-neutral-200"
         style={{ height, width: '100%' }}
-      >
-        {!googleMapsLoaded && (
-          <div className="h-full w-full flex items-center justify-center bg-neutral-100">
-            <div className="text-neutral-500">Loading map...</div>
-          </div>
-        )}
-      </div>
-      
-      {/* Instructions */}
+      />
+
       {!readOnly && (
         <p className="text-sm text-neutral-500">
           Click on the map or drag the marker to select a location.

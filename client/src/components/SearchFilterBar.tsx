@@ -240,8 +240,11 @@ const SearchFilterBar = ({
               >
                 <option value="">Any Type</option>
                 {PROPERTY_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
                 ))}
+
               </select>
             </div>
             
@@ -255,8 +258,11 @@ const SearchFilterBar = ({
               >
                 <option value="">Any Category</option>
                 {PROPERTY_CATEGORIES.map(category => (
-                  <option key={category} value={category}>{category}</option>
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
                 ))}
+
               </select>
             </div>
             

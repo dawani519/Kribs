@@ -8,8 +8,8 @@ interface ListingGridProps {
     id: number;
     title: string;
     type: string;
-    city: string;
-    state: string;
+    city?: string;
+    state?: string;
     price: number;
     photos: string[];
     bedrooms?: number;
@@ -100,7 +100,7 @@ const ListingGrid: React.FC<ListingGridProps> = ({
             id={listing.id}
             title={listing.title}
             type={listing.type}
-            address={`${listing.city}, ${listing.state}`}
+            address={`${listing.city || "Unknown City"}, ${listing.state || "Unknown State"}`}
             price={listing.price}
             photos={listing.photos}
             bedrooms={listing.bedrooms}
@@ -124,7 +124,7 @@ const ListingGrid: React.FC<ListingGridProps> = ({
           id={listing.id}
           title={listing.title}
           type={listing.type}
-          address={`${listing.city}, ${listing.state}`}
+          address={`${listing.city || "Unknown City"}, ${listing.state || "Unknown State"}`}
           price={listing.price}
           photos={listing.photos}
           bedrooms={listing.bedrooms}
